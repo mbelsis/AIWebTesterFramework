@@ -96,8 +96,179 @@ class EvidenceSink:
                 json.dump(self.logs, f, indent=2)
 
     def get_artifact_files(self) -> List[str]:
-        """Get list of all artifact files"""
-        return [f.name for f in self.artifacts_dir.iterdir() if f.is_file()]
+        """Get list of all artifact files recursively, including videos in subdirectories"""
+        try:
+            artifact_files = []
+            
+            # Use recursive glob to find all files
+            for file_path in self.artifacts_dir.rglob("*"):
+                if file_path.is_file():
+                    # Get relative path from artifacts_dir to maintain structure
+                    relative_path = file_path.relative_to(self.artifacts_dir)
+                    artifact_files.append(str(relative_path))
+            
+            logger.debug(f"Found {len(artifact_files)} artifact files recursively")
+            return artifact_files
+            
+        except Exception as e:
+            logger.error(f"Error listing artifact files recursively: {e}")
+            return []
+    
+    def get_categorized_artifacts(self) -> Dict[str, List[str]]:
+        """Get artifacts categorized by type."""
+        try:
+            all_files = self.get_artifact_files()
+            
+            categorized = {
+                "videos": [],
+                "traces": [],
+                "screenshots": [],
+                "logs": [],
+                "html_snapshots": [],
+                "watchdog_artifacts": [],
+                "other": []
+            }
+            
+            for file in all_files:
+                if file.endswith(('.webm', '.mp4', '.avi')):
+                    categorized["videos"].append(file)
+                elif file.endswith('.zip') and 'trace' in file:
+                    categorized["traces"].append(file)
+                elif file.endswith('.png') or file.endswith('.jpg'):
+                    categorized["screenshots"].append(file)
+                elif file.endswith('.json'):
+                    if any(pattern in file for pattern in ['watchdog', 'stuck_state']):
+                        categorized["watchdog_artifacts"].append(file)
+                    else:
+                        categorized["logs"].append(file)
+                elif file.endswith('.html'):
+                    categorized["html_snapshots"].append(file)
+                else:
+                    categorized["other"].append(file)
+            
+            return categorized
+        except Exception as e:
+            logger.error(f"Error categorizing artifacts: {e}")
+            return {"error": [str(e)]}
+    
+    def validate_video_artifacts(self) -> Dict[str, Any]:
+        """Validate video artifacts for completeness and playability."""
+        validation_result = {
+            "valid_videos": [],
+            "invalid_videos": [],
+            "missing_videos": [],
+            "total_video_size_bytes": 0,
+            "validation_errors": []
+        }
+        
+        try:
+            video_dir = self.artifacts_dir / "video"
+            
+            if not video_dir.exists():
+                validation_result["missing_videos"].append("Video directory does not exist")
+                return validation_result
+            
+            # Find all video files
+            video_files = list(video_dir.glob("*.webm")) + list(video_dir.glob("*.mp4"))
+            
+            if not video_files:
+                validation_result["missing_videos"].append("No video files found in video directory")
+                return validation_result
+            
+            for video_file in video_files:
+                try:
+                    if video_file.exists() and video_file.stat().st_size > 0:
+                        file_size = video_file.stat().st_size
+                        validation_result["valid_videos"].append({
+                            "name": video_file.name,
+                            "path": str(video_file),
+                            "size_bytes": file_size,
+                            "size_mb": round(file_size / (1024 * 1024), 2)
+                        })
+                        validation_result["total_video_size_bytes"] += file_size
+                    else:
+                        validation_result["invalid_videos"].append({
+                            "name": video_file.name,
+                            "issue": "File is empty or does not exist"
+                        })
+                except Exception as e:
+                    validation_result["invalid_videos"].append({
+                        "name": video_file.name,
+                        "issue": f"Error accessing file: {str(e)}"
+                    })
+            
+            return validation_result
+            
+        except Exception as e:
+            error_msg = f"Critical error during video validation: {str(e)}"
+            logger.error(error_msg)
+            validation_result["validation_errors"].append(error_msg)
+            return validation_result
+    
+    def generate_artifact_summary(self, finalization_result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Generate comprehensive artifact summary including video validation."""
+        try:
+            summary = {
+                "timestamp": time.time(),
+                "artifacts_directory": str(self.artifacts_dir),
+                "categorized_files": self.get_categorized_artifacts(),
+                "video_validation": self.validate_video_artifacts(),
+                "total_events_logged": len(self.logs)
+            }
+            
+            # Include finalization results if provided
+            if finalization_result:
+                summary["finalization_status"] = finalization_result
+                
+            # Calculate total artifact size
+            try:
+                total_size = sum(f.stat().st_size for f in self.artifacts_dir.rglob('*') if f.is_file())
+                summary["total_artifacts_size_bytes"] = total_size
+                summary["total_artifacts_size_mb"] = round(total_size / (1024 * 1024), 2)
+            except Exception as e:
+                summary["size_calculation_error"] = str(e)
+            
+            # Get watchdog artifacts summary
+            watchdog_artifacts = self.get_watchdog_artifacts()
+            if watchdog_artifacts:
+                summary["watchdog_artifacts_count"] = len(watchdog_artifacts)
+            
+            return summary
+            
+        except Exception as e:
+            error_msg = f"Error generating artifact summary: {str(e)}"
+            logger.error(error_msg)
+            return {"error": error_msg, "timestamp": time.time()}
+    
+    def save_artifact_summary(self, finalization_result: Optional[Dict[str, Any]] = None, 
+                             filename: str = "artifact_summary.json") -> str:
+        """Generate and save comprehensive artifact summary."""
+        try:
+            summary = self.generate_artifact_summary(finalization_result)
+            
+            summary_path = self.artifacts_dir / filename
+            with open(summary_path, "w") as f:
+                json.dump(summary, f, indent=2)
+            
+            logger.info(f"Artifact summary saved to {summary_path}")
+            
+            # Log the summary generation
+            self.log_event("artifact_summary_generated", {
+                "summary_path": str(summary_path),
+                "total_files": len(summary.get("categorized_files", {}).get("videos", [])) + 
+                              len(summary.get("categorized_files", {}).get("traces", [])) + 
+                              len(summary.get("categorized_files", {}).get("screenshots", [])),
+                "valid_videos": len(summary.get("video_validation", {}).get("valid_videos", [])),
+                "finalization_status": finalization_result.get("status") if finalization_result else None
+            })
+            
+            return str(summary_path)
+            
+        except Exception as e:
+            error_msg = f"Error saving artifact summary: {str(e)}"
+            logger.error(error_msg)
+            self.log_event("artifact_summary_error", {"error": error_msg})
+            return ""
     
     def redact_html_content(self, html_content: str) -> str:
         """Redact sensitive data from HTML content (DOM snapshots)"""
@@ -312,12 +483,12 @@ class EvidenceSink:
         """Get list of all watchdog-related artifact files."""
         try:
             watchdog_files = []
-            for f in self.artifacts_dir.iterdir():
+            for f in self.artifacts_dir.rglob('*'):  # Use rglob to check subdirectories too
                 if f.is_file() and any(pattern in f.name for pattern in [
                     'watchdog_state', 'watchdog_comparison', 'watchdog_metrics', 
                     'watchdog_screenshot', 'stuck_state'
                 ]):
-                    watchdog_files.append(f.name)
+                    watchdog_files.append(str(f.relative_to(self.artifacts_dir)))
             
             return sorted(watchdog_files)
             

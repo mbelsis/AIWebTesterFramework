@@ -3,6 +3,7 @@ from pathlib import Path
 import logging
 import time
 import hashlib
+import asyncio
 from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, asdict
 
@@ -426,3 +427,138 @@ def get_network_activity_summary(page) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Failed to get network activity summary: {e}")
         return None
+
+
+async def finalize_video_and_trace(context, artifacts_dir: str, timeout: int = 30) -> Dict[str, Any]:
+    """
+    Properly finalize video recording and trace collection with durability guarantees.
+    CRITICAL FIX: Proper sequence is stop tracing → close context → wait for videos → validate
+    
+    Args:
+        context: Playwright browser context
+        artifacts_dir: Directory where artifacts are stored
+        timeout: Maximum time to wait for finalization in seconds
+        
+    Returns:
+        Dict containing finalization status and artifact information
+    """
+    finalization_result = {
+        "status": "pending",
+        "video_finalized": False,
+        "trace_finalized": False,
+        "artifacts": {},
+        "errors": []
+    }
+    
+    artifacts_path = Path(artifacts_dir)
+    
+    try:
+        logger.info("Starting video and trace finalization...")
+        start_time = time.time()
+        
+        # Step 1: Stop tracing and save trace file
+        trace_path = artifacts_path / "trace.zip"
+        try:
+            await context.tracing.stop(path=str(trace_path))
+            
+            # Wait for trace file to be written and validate
+            for attempt in range(timeout):
+                if trace_path.exists() and trace_path.stat().st_size > 0:
+                    finalization_result["trace_finalized"] = True
+                    finalization_result["artifacts"]["trace"] = {
+                        "path": str(trace_path),
+                        "size_bytes": trace_path.stat().st_size,
+                        "finalized_at": time.time()
+                    }
+                    logger.info(f"Trace finalized successfully: {trace_path} ({trace_path.stat().st_size} bytes)")
+                    break
+                await asyncio.sleep(1)
+            else:
+                finalization_result["errors"].append("Trace file not created within timeout period")
+                
+        except Exception as e:
+            error_msg = f"Error stopping trace: {str(e)}"
+            logger.error(error_msg)
+            finalization_result["errors"].append(error_msg)
+        
+        # Step 2: CRITICAL FIX - Close context first to flush videos
+        try:
+            logger.info("Closing browser context to flush video recordings...")
+            await context.close()
+            logger.info("Browser context closed successfully - video files should now be flushed")
+        except Exception as e:
+            error_msg = f"Error closing browser context: {str(e)}"
+            logger.error(error_msg)
+            finalization_result["errors"].append(error_msg)
+        
+        # Step 3: NOW wait for video files to appear after context close
+        video_dir = artifacts_path / "video"
+        try:
+            # Give video files time to be written after context close
+            await asyncio.sleep(2)
+            
+            if video_dir.exists():
+                # Check for video files and validate them
+                video_files = list(video_dir.glob("*.webm")) + list(video_dir.glob("*.mp4"))
+                if video_files:
+                    video_artifacts = {}
+                    for video_file in video_files:
+                        # Wait for video file to be stable (no size changes)
+                        stable_size = None
+                        for attempt in range(timeout):
+                            current_size = video_file.stat().st_size if video_file.exists() else 0
+                            if stable_size is not None and current_size == stable_size and current_size > 0:
+                                # File size is stable, consider it finalized
+                                video_artifacts[video_file.name] = {
+                                    "path": str(video_file),
+                                    "size_bytes": current_size,
+                                    "finalized_at": time.time()
+                                }
+                                logger.info(f"Video finalized: {video_file.name} ({current_size} bytes)")
+                                break
+                            stable_size = current_size
+                            await asyncio.sleep(1)
+                        else:
+                            finalization_result["errors"].append(f"Video file {video_file.name} did not stabilize within timeout")
+                    
+                    if video_artifacts:
+                        finalization_result["video_finalized"] = True
+                        finalization_result["artifacts"]["videos"] = video_artifacts
+                        logger.info(f"Video finalization completed: {len(video_artifacts)} files")
+                    else:
+                        finalization_result["errors"].append("No stable video files found after context close")
+                else:
+                    # No video files found - this might be expected if recording wasn't active
+                    logger.info("No video files found after context close - recording may not have been active")
+                    finalization_result["video_finalized"] = True  # Consider it finalized if no files expected
+            else:
+                logger.info("No video directory found - video recording was not enabled")
+                finalization_result["video_finalized"] = True
+                
+        except Exception as e:
+            error_msg = f"Error during video finalization: {str(e)}"
+            logger.error(error_msg)
+            finalization_result["errors"].append(error_msg)
+        
+        # Determine overall status
+        if finalization_result["video_finalized"] and finalization_result["trace_finalized"]:
+            if not finalization_result["errors"]:
+                finalization_result["status"] = "success"
+            else:
+                finalization_result["status"] = "success_with_warnings"
+        else:
+            finalization_result["status"] = "failed"
+        
+        elapsed_time = time.time() - start_time
+        finalization_result["finalization_duration_seconds"] = elapsed_time
+        
+        logger.info(f"Finalization completed in {elapsed_time:.2f}s with status: {finalization_result['status']}")
+        
+        return finalization_result
+        
+    except Exception as e:
+        error_msg = f"Critical error during finalization: {str(e)}"
+        logger.error(error_msg)
+        finalization_result["status"] = "critical_error"
+        finalization_result["errors"].append(error_msg)
+        return finalization_result
