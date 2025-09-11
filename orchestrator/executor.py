@@ -58,10 +58,13 @@ class Executor:
                 last = now
             await asyncio.sleep(0.05)
 
-    async def run_step(self, idx: int, step_data: Dict[str, Any]):
+    async def run_step(self, idx: int, step_data: Dict[str, Any], base_url: str = ""):
         """Execute a single test step"""
         step = Step(step_data)
         self._step_active = True
+        
+        # Log step start to evidence
+        self.sink.log_event("step_started", {"index": idx, "title": step.title, "action": step.action})
         
         if self.cr:
             await self.cr.send_step(self.run_id, idx, step.title, "executing")
@@ -70,14 +73,16 @@ class Executor:
 
         try:
             # Execute the step based on action type
+            target = self._resolve_target(step.target, base_url)
+            
             if step.action == "navigate":
-                await self._navigate(step.target)
+                await self._navigate(target)
             elif step.action == "click":
-                await self._click(step.target)
+                await self._click(target)
             elif step.action == "fill":
-                await self._fill(step.target, step.data.get("value", ""))
+                await self._fill(target, step.data.get("value", ""))
             elif step.action == "submit":
-                await self._submit(step.target)
+                await self._submit(target)
             elif step.action == "wait":
                 await self._wait(step.data.get("seconds", 1))
             elif step.action == "verify":
@@ -86,6 +91,8 @@ class Executor:
                 raise ValueError(f"Unknown action: {step.action}")
 
             # Log successful step
+            self.sink.log_event("step_completed", {"index": idx, "title": step.title, "status": "passed"})
+            
             if self.cr:
                 await self.cr.send_log(
                     self.run_id, "info", "agent", f"Step {idx}: {step.title} completed", time.time()
@@ -93,6 +100,16 @@ class Executor:
                 await self.cr.send_step(self.run_id, idx, step.title, "passed")
 
         except Exception as e:
+            # Log failed step and capture screenshot
+            self.sink.log_event("step_failed", {"index": idx, "title": step.title, "error": str(e)})
+            
+            try:
+                screenshot = await self.page.screenshot()
+                filename = f"step_{idx}_failure.png"
+                self.sink.save_screenshot(screenshot, filename)
+            except:
+                pass
+            
             error_msg = f"Step failed: {str(e)}"
             if self.cr:
                 await self.cr.send_log(self.run_id, "error", "agent", error_msg, time.time())
@@ -103,6 +120,14 @@ class Executor:
             if thumb_task:
                 thumb_task.cancel()
 
+    def _resolve_target(self, target: str, base_url: str) -> str:
+        """Resolve target URL with base_url if needed"""
+        if target.startswith("http"):
+            return target
+        if base_url and target.startswith("/"):
+            return base_url.rstrip("/") + target
+        return target
+    
     async def _navigate(self, url: str):
         """Navigate to URL"""
         await self.page.goto(url)
@@ -110,15 +135,21 @@ class Executor:
 
     async def _click(self, selector: str):
         """Click element"""
+        # Wait for selector to be available
+        await self.page.wait_for_selector(selector, timeout=10000)
         await self.page.click(selector)
         await asyncio.sleep(0.5)  # Brief pause after click
 
     async def _fill(self, selector: str, value: str):
         """Fill form field"""
+        # Wait for selector to be available
+        await self.page.wait_for_selector(selector, timeout=10000)
         await self.page.fill(selector, value)
 
     async def _submit(self, selector: str):
         """Submit form"""
+        # Wait for selector to be available
+        await self.page.wait_for_selector(selector, timeout=10000)
         await self.page.click(selector)
         await self.page.wait_for_load_state("networkidle")
 

@@ -52,7 +52,7 @@ def control_room():
 def mock_app():
     """Start the mock demo application."""
     import uvicorn
-    uvicorn.run("mock_app.app:app", host="127.0.0.1", port=5001, reload=True)
+    uvicorn.run("mock_app.app:app", host="127.0.0.1", port=5000, reload=True)
 
 if __name__ == "__main__":
     app()
