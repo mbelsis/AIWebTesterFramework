@@ -10,7 +10,7 @@ authors = [{name = "AI WebTester", email = "contact@example.com"}]
 license = {text = "MIT"}
 requires-python = ">=3.11"
 dependencies = [
-    "typer[all]>=0.12,<0.15",
+    "typer>=0.12,<0.15",
     "playwright>=1.46,<1.49",
     "fastapi>=0.111,<0.116",
     "uvicorn[standard]>=0.27,<0.32",
@@ -21,7 +21,8 @@ dependencies = [
     "aiofiles>=23,<24",
     "openai>=1.40,<2",
     "pydantic>=2.5,<3",
-    "python-multipart>=0.0.6,<1"
+    "python-multipart>=0.0.6,<1",
+    "backoff>=2.2,<3"
 ]
 
 [project.optional-dependencies]
@@ -40,6 +41,9 @@ ai-webtester = "cli.main:app"
 [tool.black]
 line-length = 100
 target-version = ['py311']
+
+[tool.hatch.build.targets.wheel]
+packages = ["orchestrator", "cli", "browser", "evidence", "mock_app", "utils", "providers"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

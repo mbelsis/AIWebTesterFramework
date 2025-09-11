@@ -6,18 +6,11 @@ from urllib.parse import urljoin, urlparse
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 import os
-try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
+from providers.openai_provider import OpenAIProvider
 
 class PageAnalyzer:
     def __init__(self, openai_api_key: Optional[str] = None):
-        self.openai_api_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
-        if self.openai_api_key:
-            self.openai_client = OpenAI(api_key=self.openai_api_key)
-        else:
-            self.openai_client = None
+        self.openai_provider = OpenAIProvider(api_key=openai_api_key)
 
     async def analyze_page(self, url: str, headful: bool = False) -> Dict[str, Any]:
         """Analyze a web page and extract interactive elements and structure"""
@@ -237,128 +230,52 @@ class PageAnalyzer:
     async def generate_test_plan(self, page_analysis: Dict[str, Any], test_description: str = "") -> Dict[str, Any]:
         """Generate a test plan using OpenAI based on page analysis"""
         
-        if not self.openai_client:
-            raise ValueError("OpenAI API key not provided. Cannot generate test plan.")
-        
-        # Prepare data for AI
-        ai_prompt = self._create_ai_prompt(page_analysis, test_description)
-        
-        try:
-            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-            # do not change this unless explicitly requested by the user
-            response = self.openai_client.chat.completions.create(
-                model="gpt-5",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert QA engineer who creates comprehensive test plans. Generate detailed, practical test steps based on the provided web page analysis. Return valid YAML format."
-                    },
-                    {
-                        "role": "user", 
-                        "content": ai_prompt
-                    }
-                ],
-                response_format={"type": "json_object"}
-            )
-            
-            result = json.loads(response.choices[0].message.content)
-            return result
-            
-        except Exception as e:
-            print(f"Error generating test plan with AI: {e}")
-            # Fallback to rule-based generation
+        if not self.openai_provider.is_available():
+            print("OpenAI API key not provided. Using fallback test generation.")
             return self._generate_fallback_test_plan(page_analysis)
-
-    def _create_ai_prompt(self, page_analysis: Dict[str, Any], test_description: str) -> str:
-        """Create a detailed prompt for AI test plan generation"""
         
-        elements_summary = []
-        for element in page_analysis["elements"]:
-            if element["visible"] and element["enabled"]:
-                elements_summary.append({
-                    "type": element["type"],
-                    "selector": element["selector"],
-                    "text": element["text"],
-                    "input_type": element.get("input_type", ""),
-                    "placeholder": element.get("placeholder", "")
-                })
+        # Use the new provider's async method
+        result = await self.openai_provider.generate_test_plan_async(page_analysis, test_description)
         
-        prompt = f"""
-Analyze this web page and generate a comprehensive test plan:
+        # The provider handles fallback internally, so we just return the result
+        return result
 
-URL: {page_analysis["url"]}
-Page Title: {page_analysis["title"]}
-Page Type: {page_analysis["structure"]["page_type"]}
-
-Interactive Elements Found:
-{json.dumps(elements_summary[:20], indent=2)}
-
-Forms on Page:
-{json.dumps(page_analysis["structure"]["forms"], indent=2)}
-
-Test Description/Requirements: {test_description or "Create comprehensive tests covering all major functionality"}
-
-Please generate a detailed test plan that:
-1. Tests all critical user flows on this page
-2. Validates form submissions and input validation
-3. Tests navigation and interactive elements
-4. Includes appropriate verification steps
-5. Uses realistic test data
-
-Return the response as JSON with this structure:
-{{
-  "name": "Test Plan Name",
-  "description": "Test plan description",
-  "steps": [
-    {{
-      "title": "Step description",
-      "action": "navigate|fill|click|submit|wait|verify",
-      "target": "CSS selector",
-      "data": {{"value": "test data"}},
-      "verification": {{"text": "expected text"}}
-    }}
-  ]
-}}
-
-Focus on practical, executable test steps that cover the main user journey.
-"""
-        
-        return prompt
 
     def _generate_fallback_test_plan(self, page_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Generate a basic test plan without AI as fallback"""
         
         steps = []
-        page_type = page_analysis["structure"]["page_type"]
+        page_type = page_analysis.get("structure", {}).get("page_type", "unknown")
         
         # Add navigation step
         steps.append({
-            "title": f"Navigate to {page_analysis['title']}",
+            "title": f"Navigate to {page_analysis.get('title', 'page')}",
             "action": "navigate",
-            "target": page_analysis["url"]
+            "target": page_analysis.get("url", "")
         })
         
         # Generate steps based on page type and elements
-        for element in page_analysis["elements"]:
-            if not element["visible"] or not element["enabled"]:
+        for element in page_analysis.get("elements", []):
+            if not element.get("visible", False) or not element.get("enabled", False):
                 continue
                 
-            if element["type"] == "inputs" and element["input_type"] == "text":
+            if element.get("type") == "inputs" and element.get("input_type") == "text":
+                field_name = element.get("placeholder") or element.get("name") or "field"
                 steps.append({
-                    "title": f"Fill {element['placeholder'] or element['name'] or 'field'}",
+                    "title": f"Fill {field_name}",
                     "action": "fill",
-                    "target": element["selector"],
+                    "target": element.get("selector", ""),
                     "data": {"value": "test_value"}
                 })
-            elif element["type"] == "buttons" and element["text"]:
+            elif element.get("type") == "buttons" and element.get("text"):
                 steps.append({
-                    "title": f"Click {element['text']}",
+                    "title": f"Click {element.get('text', '')}",
                     "action": "click", 
-                    "target": element["selector"]
+                    "target": element.get("selector", "")
                 })
         
         return {
-            "name": f"Generated Test for {page_analysis['title']}",
+            "name": f"Generated Test for {page_analysis.get('title', 'Page')}",
             "description": f"Auto-generated test plan for {page_type} page",
             "steps": steps
         }

@@ -15,7 +15,7 @@ class TestPlanGenerator:
         test_description: str = "",
         output_dir: str = "examples",
         headful: bool = False
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Any]:
         """Generate test plan and environment config from a URL"""
         
         print(f"🔍 Analyzing page: {url}")
@@ -41,8 +41,8 @@ class TestPlanGenerator:
         return {
             "plan_file": plan_filename,
             "env_file": env_filename,
-            "page_type": page_analysis["structure"]["page_type"],
-            "elements_found": len(page_analysis['elements'])
+            "page_type": page_analysis.get("structure", {}).get("page_type", "unknown"),
+            "elements_found": len(page_analysis.get('elements', []))
         }
 
     def _generate_environment_config(self, url: str, page_analysis: Dict[str, Any]) -> Dict[str, Any]:
@@ -153,7 +153,7 @@ class TestPlanGenerator:
         safe = re.sub(r'[\s_]+', '_', safe)
         return safe.lower()[:50]  # Limit length
 
-    async def interactive_generate(self, url: str) -> Dict[str, str]:
+    async def interactive_generate(self, url: str) -> Dict[str, Any]:
         """Interactive test plan generation with user prompts"""
         
         print(f"\n🚀 AI WebTester - Intelligent Test Plan Generator")
