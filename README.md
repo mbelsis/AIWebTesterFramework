@@ -161,16 +161,18 @@ source ai-webtester-env/bin/activate  # Linux/macOS
 # Install core dependencies
 pip install --upgrade pip
 pip install \
-    typer[all]==0.12.3 \
-    playwright==1.40.0 \
-    fastapi==0.104.1 \
-    uvicorn[standard]==0.24.0 \
-    websockets==12.0 \
-    pyyaml==6.0.1 \
-    jinja2==3.1.2 \
-    beautifulsoup4==4.12.2 \
-    aiofiles==23.2.1 \
-    openai==1.3.5
+    "typer[all]>=0.12,<1.0" \
+    "playwright>=1.46,<2.0" \
+    "fastapi>=0.110,<1.0" \
+    "uvicorn[standard]>=0.24,<1.0" \
+    "websockets>=12.0,<13.0" \
+    "pyyaml>=6.0,<7.0" \
+    "jinja2>=3.1,<4.0" \
+    "beautifulsoup4>=4.12,<5.0" \
+    "aiofiles>=23.2,<24.0" \
+    "openai>=1.40,<2.0"
+
+# Note: See pyproject.toml for authoritative dependency versions
 
 # Install additional development tools (optional)
 pip install pytest pytest-asyncio
