@@ -28,6 +28,7 @@ AI WebTester is a comprehensive Python-based framework for automated web applica
 - **OpenAI API**: AI-powered testing logic and intelligent decision making
 - **PyYAML**: YAML configuration file parsing for test plans and environments
 - **Pydantic**: Data validation and settings management
+- **BeautifulSoup**: HTML parsing for webpage analysis and element extraction
 
 ##### Communication & Monitoring
 - **WebSockets**: Real-time communication between Control Room and test execution
@@ -51,7 +52,9 @@ ai-webtester/
 │   ├── __init__.py               # Package initialization  
 │   ├── control_room.py           # Control Room backend server and WebSocket handler
 │   ├── graph.py                  # Test execution graph and plan processing
-│   └── executor.py               # Step-by-step test execution engine
+│   ├── executor.py               # Step-by-step test execution engine
+│   ├── page_analyzer.py          # AI-powered webpage analysis and element detection
+│   └── test_plan_generator.py    # Automatic test plan generation from URLs
 │
 ├── browser/                       # Browser Automation Layer
 │   ├── __init__.py               # Package initialization
@@ -100,11 +103,40 @@ ai-webtester/
 
 ## Internal Logic & Workflow
 
-### 1. Test Execution Flow
+### 1. AI-Powered Test Plan Generation Flow
+
+#### Revolutionary Feature: Automatic Test Plan Creation
+
+The framework now includes breakthrough AI-powered test plan generation that eliminates the need for manual YAML creation:
+
+#### Step 1: Page Analysis
+1. **URL Input**: User provides webpage URL via `ai-webtester generate` command
+2. **Browser Automation**: Playwright launches browser and navigates to target URL
+3. **HTML Extraction**: Complete page HTML structure captured for analysis
+4. **Element Detection**: Interactive elements (forms, buttons, inputs, links) automatically identified
+5. **Page Classification**: AI determines page type (login, registration, dashboard, etc.)
+
+#### Step 2: AI-Powered Analysis
+1. **OpenAI Integration**: Page content and structure sent to OpenAI GPT-5 model
+2. **Intelligent Test Generation**: AI generates comprehensive test scenarios based on:
+   - Detected forms and input fields
+   - Interactive elements and user flows
+   - Page type and common testing patterns
+   - Security considerations (injection, XSS testing)
+   - Edge cases and validation scenarios
+3. **Test Plan Creation**: Complete YAML test plan generated with realistic test data
+4. **Environment Configuration**: Matching environment config created with appropriate settings
+
+#### Step 3: File Generation
+1. **YAML Output**: Generated test plan saved as executable YAML file
+2. **Environment Setup**: Corresponding environment configuration created
+3. **User Notification**: File paths and execution commands provided to user
+
+### 2. Traditional Test Execution Flow
 
 #### Step 1: Initialization
-1. **CLI Command Processing**: User invokes test via `ai-webtester run` or `python run_test.py`
-2. **Configuration Loading**: System loads test plan (YAML) and environment configuration
+1. **CLI Command Processing**: User invokes test via `ai-webtester run` or uses AI-generated plans
+2. **Configuration Loading**: System loads test plan (manually created or AI-generated) and environment
 3. **Run ID Generation**: Unique timestamp-based identifier created for this test session
 4. **Artifact Directory Setup**: Creates dedicated directory for all test outputs
 
@@ -142,11 +174,12 @@ ai-webtester/
    - **Evidence Capture**: Screenshots on failures, event logging
    - **Status Update**: Results sent to Control Room and evidence sink
 
-#### Step 4: AI Integration Points (Future Enhancement)
-1. **Intelligent Element Selection**: OpenAI API used to identify optimal selectors
-2. **Content Verification**: AI validates expected vs actual page content
-3. **Adaptive Test Logic**: Dynamic test step generation based on page analysis
-4. **Error Analysis**: AI-powered failure diagnosis and suggestions
+#### Step 4: Active AI Integration Points
+1. **Intelligent Element Selection**: OpenAI API identifies optimal CSS selectors for robust automation
+2. **Content Verification**: AI validates expected vs actual page content during test execution
+3. **Adaptive Test Logic**: Dynamic test step generation based on real-time page analysis
+4. **Error Analysis**: AI-powered failure diagnosis with actionable suggestions
+5. **Test Plan Generation**: Automatic comprehensive test creation from URL analysis (primary feature)
 
 #### Step 5: Cleanup & Artifact Generation
 1. **Browser Cleanup**: 
@@ -284,14 +317,52 @@ settings:
 - No persistence of sensitive data between test runs
 - Configurable browser security settings
 
-## Future Enhancements
+### 3. AI Test Plan Generation Architecture
 
-### Planned Features
+#### Core Components
+
+**PageAnalyzer Class** (`orchestrator/page_analyzer.py`):
+- **Browser Automation**: Launches Playwright browser to analyze target webpages
+- **Element Extraction**: Identifies all interactive elements (forms, buttons, inputs, links)
+- **HTML Parsing**: Uses BeautifulSoup for detailed HTML structure analysis  
+- **Page Classification**: Determines page type (login, registration, checkout, dashboard, etc.)
+- **Screenshot Capture**: Takes screenshots for AI visual analysis
+- **Selector Generation**: Creates robust CSS selectors for element targeting
+
+**TestPlanGenerator Class** (`orchestrator/test_plan_generator.py`):
+- **AI Integration**: Connects with OpenAI GPT-5 for intelligent test plan creation
+- **YAML Generation**: Produces complete test plans with realistic scenarios
+- **Environment Configuration**: Creates matching environment configs with proper settings
+- **File Management**: Saves generated files with organized naming conventions
+- **Interactive Mode**: Provides guided user experience for test generation
+
+#### AI Model Integration
+- **Model**: OpenAI GPT-5 (latest available model as of August 2025)
+- **Input**: Page structure, detected elements, user requirements
+- **Output**: Comprehensive JSON test plan converted to YAML format
+- **Capabilities**: 
+  - Form validation testing
+  - Security scenario generation (SQL injection, XSS)
+  - User journey mapping
+  - Edge case identification
+  - Realistic test data creation
+
+## Current Status & Implementation
+
+### Fully Implemented Features
+1. ✅ **AI Test Plan Generation**: Complete webpage analysis and test creation
+2. ✅ **Browser Automation**: Full Playwright integration with video recording
+3. ✅ **Real-time Monitoring**: Control Room with live WebSocket communication
+4. ✅ **Evidence Collection**: Comprehensive artifact generation and storage
+5. ✅ **CLI Interface**: Complete command-line interface with AI generation
+6. ✅ **OpenAI Integration**: GPT-5 powered intelligent test creation
+7. ✅ **Multi-format Output**: YAML test plans and environment configurations
+
+### Future Enhancements
 1. **Control Room Frontend**: React/Vite dashboard for enhanced monitoring
-2. **Advanced AI Integration**: Intelligent test generation and validation
-3. **Multi-browser Support**: Parallel testing across different browsers
-4. **CI/CD Integration**: Pipeline integration for automated testing
-5. **Report Generation**: PDF and HTML report generation
-6. **Test Recording**: Record user actions to generate test plans
-7. **Visual Regression**: AI-powered visual comparison testing
-8. **Performance Monitoring**: Page load time and performance metrics
+2. **Multi-browser Support**: Parallel testing across different browsers
+3. **CI/CD Integration**: Pipeline integration for automated testing
+4. **Report Generation**: PDF and HTML report generation
+5. **Test Recording**: Record user actions to generate test plans
+6. **Visual Regression**: AI-powered visual comparison testing
+7. **Performance Monitoring**: Page load time and performance metrics

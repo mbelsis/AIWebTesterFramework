@@ -8,7 +8,8 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
 
 ### Key Features
 
-- **🤖 AI-Powered Testing**: Intelligent test execution using OpenAI for smart decision making
+- **🧠 Revolutionary AI Test Generation**: Automatically generate comprehensive test plans from any URL - no more manual YAML writing!
+- **🤖 AI-Powered Testing**: Intelligent test execution using OpenAI for smart decision making  
 - **🎥 Video Recording**: Complete browser session recordings with Playwright
 - **📊 Real-time Monitoring**: Live Control Room dashboard with WebSocket communication
 - **📋 Comprehensive Evidence**: Automatic collection of traces, screenshots, and detailed logs
@@ -40,7 +41,16 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
 
 ### Quick Demo
 
-Run the included demo test:
+**Option 1: AI-Generated Test (Recommended)**
+```bash
+# Let AI create a test plan for you!
+python -m cli.main generate http://127.0.0.1:5000/login --description "Test login functionality"
+
+# Then run the AI-generated test
+python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --control-room
+```
+
+**Option 2: Pre-built Demo**  
 ```bash
 python run_test.py
 ```
@@ -53,16 +63,82 @@ This will:
 
 ## 📖 Usage Guide
 
+### 🧠 AI-Powered Test Generation (Revolutionary Feature!)
+
+Instead of spending time writing YAML files, let AI analyze your web application and generate comprehensive test plans automatically!
+
+#### Generate Test Plans from URLs
+
+```bash
+# Basic AI generation - analyzes any webpage and creates tests
+python -m cli.main generate https://your-app.com/login
+
+# With custom description for targeted testing
+python -m cli.main generate https://your-app.com/checkout --description "Test complete checkout flow with payment validation"
+
+# Interactive mode with guided prompts
+python -m cli.main generate https://your-app.com --interactive
+
+# Watch the AI analyze your page (when browser deps installed)
+python -m cli.main generate https://your-app.com --headful
+```
+
+**What the AI generates for you:**
+- ✅ Complete YAML test plan with realistic scenarios
+- ✅ Environment configuration with proper timeouts
+- ✅ Test data including edge cases and security tests
+- ✅ Form validation and error handling tests
+- ✅ User journey coverage for your specific page type
+
+#### Example AI Generation Workflows
+
+**Example 1: E-commerce Login Page**
+```bash
+# 1. Generate comprehensive login tests
+python -m cli.main generate https://shop.example.com/login --description "Test login with security validation"
+
+# 2. Run the AI-generated test with real-time monitoring
+python -m cli.main run --plan examples/plan.generated_login.yaml --env examples/env.generated_login.yaml --control-room
+
+# 3. View results at http://127.0.0.1:8788 and check artifacts/
+```
+
+**Example 2: Complex Registration Form**
+```bash
+# 1. Let AI analyze registration form and create comprehensive tests
+python -m cli.main generate https://app.example.com/register --description "Test user registration with validation and edge cases"
+
+# 2. Run with video recording and detailed evidence collection
+python -m cli.main run --plan examples/plan.generated_register.yaml --env examples/env.generated_register.yaml --control-room
+
+# 3. Monitor live at Control Room and review generated artifacts
+```
+
+**Example 3: Dashboard Testing**
+```bash
+# 1. Generate tests for admin dashboard functionality
+python -m cli.main generate https://admin.example.com/dashboard --description "Test dashboard analytics and user management"
+
+# 2. Execute with headful mode to watch the test run
+python -m cli.main run --plan examples/plan.generated_dashboard.yaml --env examples/env.generated_dashboard.yaml --control-room --headful
+```
+
 ### Command Line Interface
 
 The framework provides several CLI commands:
 
-#### Run Tests
+#### Generate AI Test Plans
+```bash
+# AI test plan generation (recommended approach)
+python -m cli.main generate <URL> [--description "test description"] [--interactive] [--headful] [--output-dir examples]
+```
+
+#### Run Tests  
 ```bash
 # Basic test execution
 python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml
 
-# With Control Room monitoring
+# With Control Room monitoring (recommended for real-time viewing)
 python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml --control-room
 
 # Headless mode
@@ -74,17 +150,27 @@ python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env exam
 
 #### Start Services
 ```bash
-# Start Control Room dashboard
+# Start Control Room dashboard for real-time monitoring
 python -m cli.main control-room
 
-# Start demo application
+# Start demo application for testing
 python -m cli.main mock-app
 ```
 
 ### CLI Parameters
 
+#### AI Generation Parameters
 | Parameter | Description | Default |
-|-----------|-------------|---------|
+|-----------|-------------|---------|  
+| `url` | URL to analyze and generate test plan for | Required |
+| `--description` | Description of what to test | Auto-detected |
+| `--output-dir` | Output directory for generated files | `examples` |
+| `--headful` | Show browser during analysis | `false` |
+| `--interactive` | Interactive mode with prompts | `false` |
+
+#### Test Execution Parameters  
+| Parameter | Description | Default |
+|-----------|-------------|---------|  
 | `--plan` | Path to test plan YAML file | Required |
 | `--env` | Path to environment YAML file | Required |
 | `--headful` | Show browser window during testing | `true` |
@@ -187,37 +273,97 @@ settings:
 | `settings` | `video` | Enable video recording |
 | `settings` | `screenshots` | Enable screenshots |
 
-## 🎛️ Control Room Dashboard
+## 🎛️ Control Room Dashboard - Real-time Test Monitoring
 
 Access the real-time monitoring dashboard at `http://127.0.0.1:8788` when Control Room is enabled.
 
-### Features:
-- **Live Progress**: Real-time test step execution
-- **Browser Thumbnails**: Live screenshots during test execution  
-- **Detailed Logs**: Console, network, and agent messages
-- **User Controls**: Approve/reject/stop test execution
-- **Run History**: List and monitor multiple test runs
+### Live Monitoring Features:
+- **Live Progress**: Watch test steps execute in real-time with status updates
+- **Browser Thumbnails**: Live screenshots showing exactly what's happening during test execution  
+- **Detailed Logs**: Console, network, and AI agent messages with timestamps
+- **User Controls**: Approve/reject/stop test execution for interactive testing
+- **Run History**: List and monitor multiple concurrent test runs
+- **Evidence Preview**: Live preview of screenshots, videos, and traces as they're generated
+
+### How to View Tests in Real-time:
+
+1. **Start a test with Control Room enabled:**
+   ```bash
+   python -m cli.main run --plan your-test-plan.yaml --env your-environment.yaml --control-room
+   ```
+
+2. **Open Control Room Dashboard:**
+   - Navigate to `http://127.0.0.1:8788` in your browser
+   - You'll see live test progress, browser screenshots, and detailed logs
+
+3. **Monitor Test Execution:**
+   - **Live Browser View**: Watch browser actions happen in real-time through thumbnails
+   - **Step Progress**: See each test step execute with success/failure indicators  
+   - **Live Logs**: View console output, network requests, and AI decision making
+   - **Artifacts**: Access screenshots, videos, and traces as they're generated
 
 ### WebSocket API:
 - **Endpoint**: `/ws/{run_id}`
-- **Message Types**: `status`, `step`, `log`, `thumbnail`
+- **Message Types**: `status`, `step`, `log`, `thumbnail`, `artifact`
+- **Real-time Updates**: Live streaming of test progress and browser state
 
-## 📂 Test Artifacts
+## 📂 Test Artifacts & Results Documentation
 
-Each test run generates comprehensive artifacts in the `artifacts/{run_id}/` directory:
+Each test run generates comprehensive artifacts in the `artifacts/{run_id}/` directory for complete test documentation:
 
 ### Generated Files:
-- **`run.json`**: Test execution summary and metadata
-- **`events.json`**: Detailed chronological event log
-- **`trace.zip`**: Complete Playwright execution trace
-- **`video/`**: Browser session video recordings
-- **`*.png`**: Screenshots (failures, specific steps)
+- **`run.json`**: Test execution summary and metadata with timing information
+- **`events.json`**: Detailed chronological event log with AI decisions and browser actions
+- **`trace.zip`**: Complete Playwright execution trace for deep debugging
+- **`video/`**: Browser session video recordings showing complete user journey
+- **`*.png`**: Screenshots (failures, specific steps, verification points)
 
-### Artifact Analysis:
-- **Videos**: Watch complete test execution
-- **Traces**: Open in Playwright trace viewer: `playwright show-trace trace.zip`
-- **Screenshots**: Visual evidence of failures and key steps
-- **Logs**: Detailed debugging information
+### How to View and Analyze Results:
+
+#### 🎥 **Video Analysis**
+```bash
+# Videos are automatically saved during test execution
+ls artifacts/test-run-*/video/
+# Play the .webm files to see complete browser automation
+```
+
+#### 🔍 **Trace Analysis** (Most Powerful Debugging Tool)
+```bash
+# Open complete execution trace in Playwright's trace viewer
+playwright show-trace artifacts/test-run-*/trace.zip
+
+# This opens a comprehensive timeline showing:
+# - Every browser action and network request
+# - Screenshots at each step
+# - Console logs and JavaScript execution
+# - Performance metrics and timings
+```
+
+#### 📊 **Log Analysis**
+```bash
+# View detailed test execution logs
+cat artifacts/test-run-*/events.json | jq .
+
+# Check test summary
+cat artifacts/test-run-*/run.json | jq .
+```
+
+#### 🖼️ **Screenshot Evidence**
+```bash
+# View all screenshots taken during test
+ls artifacts/test-run-*/screenshot_*.png
+
+# Screenshots are automatically taken on:
+# - Test failures
+# - Verification steps  
+# - Key user journey points
+```
+
+### Artifact Analysis Benefits:
+- **Videos**: Perfect for documentation and showing stakeholders exactly what the test does
+- **Traces**: Essential for debugging failed tests - shows exact failure point with browser state
+- **Screenshots**: Visual evidence for test reports and failure analysis
+- **Logs**: Detailed technical information for developers and QA teams
 
 ## 🧪 Creating Custom Tests
 

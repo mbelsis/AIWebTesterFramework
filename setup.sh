@@ -89,7 +89,7 @@ install_dependencies() {
         $PIP_CMD install -e .
     else
         print_status "Installing individual packages..."
-        $PIP_CMD install playwright fastapi uvicorn typer jinja2 websockets pyyaml pydantic aiofiles python-multipart openai
+        $PIP_CMD install playwright fastapi uvicorn typer jinja2 websockets pyyaml pydantic aiofiles python-multipart openai beautifulsoup4
     fi
     
     print_success "Python dependencies installed"
@@ -220,20 +220,24 @@ show_next_steps() {
     echo "1. Set your OpenAI API key (if not already done):"
     echo "   export OPENAI_API_KEY=\"your-api-key-here\""
     echo ""
-    echo "2. Run the quick demo:"
+    echo "2. Try the revolutionary AI test generation:"
+    echo "   python -m cli.main mock-app &         # Start demo app in background"  
+    echo "   python -m cli.main generate http://127.0.0.1:5000/login --description 'Test login functionality'"
+    echo "   python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --control-room"
+    echo ""
+    echo "3. Or run the quick pre-built demo:"
     echo "   python run_test.py"
     echo ""
-    echo "3. Or use the CLI interface:"
+    echo "4. Use the CLI interface directly:"
     echo "   python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml --control-room"
     echo ""
-    echo "4. Start individual services:"
+    echo "5. Start individual services:"
     echo "   python -m cli.main mock-app          # Demo application on port 5000"
     echo "   python -m cli.main control-room      # Control Room on port 8788"
     echo ""
-    echo "5. Create custom tests:"
-    echo "   - Copy examples/plan.demo_create_employee.yaml"
-    echo "   - Copy examples/env.local.yaml"
-    echo "   - Modify for your application"
+    echo "6. Generate tests for any website:"
+    echo "   python -m cli.main generate https://your-app.com/login --description 'Test login with validation'"
+    echo "   python -m cli.main generate https://your-app.com --interactive  # Interactive mode"
     echo ""
     echo "Documentation:"
     echo "   - README.md: User guide and usage instructions"
