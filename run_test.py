@@ -29,8 +29,8 @@ async def main():
     cr.start_in_background()
     print("Control Room ➜ http://127.0.0.1:8788")
 
-    # Create and run test
-    graph = TestGraph(str(artifacts), headful=True, control_room=cr, run_id=run_id)
+    # Create and run test (headless mode for better compatibility)
+    graph = TestGraph(str(artifacts), headful=False, control_room=cr, run_id=run_id)
     result = await graph.run(PLAN, ENV)
     
     # Save results
