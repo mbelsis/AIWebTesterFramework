@@ -61,6 +61,251 @@ This will:
 - Execute a sample employee creation test
 - Generate artifacts in `artifacts/` directory
 
+## 🔧 Manual Environment Setup
+
+For environments where the automated setup script doesn't work or when you need full control over the installation process, follow these manual setup steps:
+
+### System Requirements
+- **Operating System**: Linux (Ubuntu/Debian recommended), macOS, or Windows with WSL
+- **Python**: 3.11 or higher
+- **Memory**: At least 2GB RAM available
+- **Storage**: 1GB free space for browser dependencies
+
+### Step 1: Install System Dependencies
+
+**Ubuntu/Debian:**
+```bash
+# Update package lists
+sudo apt-get update
+
+# Install Python and pip
+sudo apt-get install python3.11 python3.11-pip python3.11-venv
+
+# Install browser system dependencies required by Playwright
+sudo apt-get install \
+    libnspr4 \
+    libnss3 \
+    libdbus-1-3 \
+    libatk1.0-0t64 \
+    libatk-bridge2.0-0t64 \
+    libcups2t64 \
+    libxcb1 \
+    libxkbcommon0 \
+    libatspi2.0-0t64 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libgbm1 \
+    libcairo2 \
+    libpango-1.0-0 \
+    libasound2t64
+```
+
+**macOS:**
+```bash
+# Install Python using Homebrew
+brew install python@3.11
+
+# Browser dependencies are automatically handled on macOS
+```
+
+**CentOS/RHEL/Fedora:**
+```bash
+# Install Python
+sudo dnf install python3.11 python3.11-pip
+
+# Install browser dependencies
+sudo dnf install \
+    nspr \
+    nss \
+    dbus-libs \
+    atk \
+    at-spi2-atk \
+    cups-libs \
+    libxcb \
+    libxkbcommon \
+    at-spi2-core \
+    libXcomposite \
+    libXdamage \
+    libXfixes \
+    mesa-libgbm \
+    cairo \
+    pango \
+    alsa-lib
+```
+
+### Step 2: Create Virtual Environment
+
+```bash
+# Create a virtual environment
+python3.11 -m venv ai-webtester-env
+
+# Activate the virtual environment
+source ai-webtester-env/bin/activate  # Linux/macOS
+# OR for Windows:
+# ai-webtester-env\Scripts\activate
+```
+
+### Step 3: Install Python Dependencies
+
+```bash
+# Make sure you're in the project directory and virtual environment is activated
+
+# Install core dependencies
+pip install --upgrade pip
+pip install \
+    typer[all]==0.12.3 \
+    playwright==1.40.0 \
+    fastapi==0.104.1 \
+    uvicorn[standard]==0.24.0 \
+    websockets==12.0 \
+    pyyaml==6.0.1 \
+    jinja2==3.1.2 \
+    beautifulsoup4==4.12.2 \
+    aiofiles==23.2.1 \
+    openai==1.3.5
+
+# Install additional development tools (optional)
+pip install pytest pytest-asyncio
+```
+
+### Step 4: Install Browser Dependencies
+
+```bash
+# Install Playwright browsers and their dependencies
+playwright install
+
+# This downloads Chromium, Firefox, and WebKit browsers
+# If you only need Chromium (recommended for most cases):
+playwright install chromium
+
+# Alternatively, use the system dependency installer
+playwright install-deps
+```
+
+### Step 5: Set Environment Variables
+
+```bash
+# Set OpenAI API key for AI-powered features
+export OPENAI_API_KEY="your-actual-openai-api-key-here"
+
+# Add to your shell profile for persistence (.bashrc, .zshrc, etc.)
+echo 'export OPENAI_API_KEY="your-actual-openai-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Step 6: Verify Installation
+
+```bash
+# Test the CLI is working
+python -m cli.main --help
+
+# Test AI generation capabilities
+python -m cli.main generate --help
+
+# Start the mock application for testing
+python -m cli.main mock-app &
+
+# Test that the mock app is running
+curl http://127.0.0.1:5000/login
+
+# Test browser automation (this should work without errors now)
+python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml
+
+# Test Control Room dashboard
+python -m cli.main control-room &
+# Then visit http://127.0.0.1:8788 in your browser
+```
+
+### Step 7: Test Full AI Generation Pipeline
+
+```bash
+# Generate a test plan using AI (requires OpenAI API key)
+python -m cli.main generate http://127.0.0.1:5000/login --description "Test login functionality with edge cases"
+
+# Run the AI-generated test with Control Room monitoring
+python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --control-room --headful
+
+# View results
+ls artifacts/  # Check generated artifacts
+playwright show-trace artifacts/*/trace.zip  # View detailed execution trace
+```
+
+### Troubleshooting Manual Installation
+
+**Issue: Browser launch fails with dependency errors**
+```bash
+# Run the Playwright dependency installer
+playwright install-deps
+
+# Or manually install missing dependencies shown in error message
+sudo apt-get install [missing-package-names]
+```
+
+**Issue: Python import errors**
+```bash
+# Make sure virtual environment is activated
+source ai-webtester-env/bin/activate
+
+# Reinstall dependencies
+pip install --force-reinstall -r requirements.txt
+```
+
+**Issue: OpenAI API errors**
+```bash
+# Verify API key is set
+echo $OPENAI_API_KEY
+
+# Test API connection
+python -c "import openai; print('OpenAI client initialized successfully')"
+```
+
+**Issue: Port conflicts**
+```bash
+# Kill processes using default ports
+sudo lsof -ti:5000 | xargs kill -9  # Mock app port
+sudo lsof -ti:8788 | xargs kill -9  # Control Room port
+
+# Or use different ports in environment config files
+```
+
+### Docker Alternative (Advanced)
+
+If you prefer containerized setup:
+
+```bash
+# Create Dockerfile
+cat > Dockerfile << EOF
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y \\
+    libnspr4 libnss3 libdbus-1-3 libatk1.0-0t64 \\
+    libatk-bridge2.0-0t64 libcups2t64 libxcb1 \\
+    libxkbcommon0 libatspi2.0-0t64 libxcomposite1 \\
+    libxdamage1 libxfixes3 libgbm1 libcairo2 \\
+    libpango-1.0-0 libasound2t64
+
+WORKDIR /app
+COPY . .
+RUN pip install [dependencies-list]
+RUN playwright install
+
+CMD ["python", "-m", "cli.main", "control-room"]
+EOF
+
+# Build and run
+docker build -t ai-webtester .
+docker run -p 8788:8788 -p 5000:5000 ai-webtester
+```
+
+### Production Deployment Considerations
+
+- **Resource Requirements**: Ensure adequate CPU/memory for browser automation
+- **Headless Mode**: Use `--no-headful` in production environments
+- **Artifact Storage**: Configure persistent storage for test results
+- **API Rate Limits**: Monitor OpenAI API usage in high-volume scenarios
+- **Security**: Keep OpenAI API keys secure and rotate regularly
+
 ## 📖 Usage Guide
 
 ### 🧠 AI-Powered Test Generation (Revolutionary Feature!)
