@@ -1,0 +1,352 @@
+name: "Social Media Platform - Complete Content Workflow"
+description: "End-to-end test of social media platform including user onboarding, profile setup, content creation, and social interactions"
+
+steps:
+  # User Registration and Onboarding
+  - title: "Navigate to social media platform"
+    action: "navigate"
+    target: "/"
+
+  - title: "Click create account button"
+    action: "click"
+    target: ".create-account-btn"
+
+  - title: "Choose sign up with email"
+    action: "click"
+    target: ".signup-email-option"
+
+  - title: "Enter email address"
+    action: "fill"
+    target: "#signupEmail"
+    data:
+      value: "alex.creator.test@example.com"
+
+  - title: "Enter username"
+    action: "fill"
+    target: "#signupUsername"
+    data:
+      value: "alexcreator2024"
+
+  - title: "Enter password"
+    action: "fill"
+    target: "#signupPassword"
+    data:
+      value: "CreativePass789!"
+
+  - title: "Confirm password"
+    action: "fill"
+    target: "#confirmSignupPassword"
+    data:
+      value: "CreativePass789!"
+
+  - title: "Accept privacy policy"
+    action: "click"
+    target: "#acceptPrivacyPolicy"
+
+  - title: "Submit registration"
+    action: "submit"
+    target: ".signup-form button[type='submit']"
+
+  - title: "Verify email confirmation sent"
+    action: "verify"
+    verification:
+      text: "Check your email to confirm"
+
+  # Profile Setup and Customization
+  - title: "Skip email verification for testing"
+    action: "click"
+    target: ".skip-verification-link"
+
+  - title: "Start profile setup"
+    action: "click"
+    target: ".setup-profile-btn"
+
+  - title: "Upload profile picture"
+    action: "click"
+    target: "#profilePictureUpload"
+
+  - title: "Enter display name"
+    action: "fill"
+    target: "#displayName"
+    data:
+      value: "Alex Creative"
+
+  - title: "Write bio"
+    action: "fill"
+    target: "#profileBio"
+    data:
+      value: "Digital creator passionate about photography and design. Sharing my creative journey!"
+
+  - title: "Add website URL"
+    action: "fill"
+    target: "#websiteUrl"
+    data:
+      value: "https://alexcreative.portfolio.com"
+
+  - title: "Select interests - Photography"
+    action: "click"
+    target: "#interest_photography"
+
+  - title: "Select interests - Design"
+    action: "click"
+    target: "#interest_design"
+
+  - title: "Select interests - Art"
+    action: "click"
+    target: "#interest_art"
+
+  - title: "Save profile setup"
+    action: "click"
+    target: ".save-profile-btn"
+
+  - title: "Skip suggested follows"
+    action: "click"
+    target: ".skip-suggestions-btn"
+
+  - title: "Complete onboarding"
+    action: "click"
+    target: ".complete-onboarding-btn"
+
+  # Content Creation - Photo Post
+  - title: "Create new post"
+    action: "click"
+    target: ".create-post-btn"
+
+  - title: "Upload image"
+    action: "click"
+    target: "#imageUpload"
+
+  - title: "Add post caption"
+    action: "fill"
+    target: "#postCaption"
+    data:
+      value: "Beautiful sunset from my recent photography session! What do you think? #photography #sunset #creative"
+
+  - title: "Add location tag"
+    action: "fill"
+    target: "#locationTag"
+    data:
+      value: "Golden Gate Bridge, San Francisco"
+
+  - title: "Tag people in post"
+    action: "click"
+    target: ".tag-people-btn"
+
+  - title: "Apply photo filter"
+    action: "click"
+    target: ".filter-vintage"
+
+  - title: "Set post visibility"
+    action: "click"
+    target: "#postVisibility"
+
+  - title: "Choose public visibility"
+    action: "click"
+    target: "option[value='public']"
+
+  - title: "Publish photo post"
+    action: "click"
+    target: ".publish-post-btn"
+
+  - title: "Verify post published"
+    action: "verify"
+    verification:
+      text: "Post shared successfully"
+
+  # Content Creation - Story
+  - title: "Create story"
+    action: "click"
+    target: ".create-story-btn"
+
+  - title: "Upload story image"
+    action: "click"
+    target: "#storyImageUpload"
+
+  - title: "Add story text"
+    action: "click"
+    target: ".add-story-text-btn"
+
+  - title: "Enter story text"
+    action: "fill"
+    target: "#storyTextInput"
+    data:
+      value: "Working on new content!"
+
+  - title: "Choose story background color"
+    action: "click"
+    target: ".story-bg-color[data-color='blue']"
+
+  - title: "Add story sticker"
+    action: "click"
+    target: ".add-sticker-btn"
+
+  - title: "Choose location sticker"
+    action: "click"
+    target: ".sticker-location"
+
+  - title: "Share story"
+    action: "click"
+    target: ".share-story-btn"
+
+  - title: "Verify story shared"
+    action: "verify"
+    verification:
+      text: "Story shared"
+
+  # Social Interactions
+  - title: "Navigate to explore feed"
+    action: "click"
+    target: ".nav-explore"
+
+  - title: "Search for hashtag"
+    action: "fill"
+    target: "#searchInput"
+    data:
+      value: "#photography"
+
+  - title: "Execute hashtag search"
+    action: "click"
+    target: ".search-btn"
+
+  - title: "Like first post in results"
+    action: "click"
+    target: ".post-item:first-child .like-btn"
+
+  - title: "Comment on post"
+    action: "click"
+    target: ".post-item:first-child .comment-btn"
+
+  - title: "Write comment"
+    action: "fill"
+    target: "#commentInput"
+    data:
+      value: "Amazing shot! Love the composition 📸✨"
+
+  - title: "Post comment"
+    action: "click"
+    target: ".post-comment-btn"
+
+  - title: "Follow user"
+    action: "click"
+    target: ".post-item:first-child .follow-btn"
+
+  - title: "Share post to story"
+    action: "click"
+    target: ".post-item:first-child .share-btn"
+
+  - title: "Choose share to story option"
+    action: "click"
+    target: ".share-to-story-option"
+
+  - title: "Add message to shared post"
+    action: "fill"
+    target: "#shareMessage"
+    data:
+      value: "Check this out!"
+
+  - title: "Share to story"
+    action: "click"
+    target: ".confirm-share-btn"
+
+  # Direct Messages
+  - title: "Navigate to messages"
+    action: "click"
+    target: ".nav-messages"
+
+  - title: "Start new conversation"
+    action: "click"
+    target: ".new-message-btn"
+
+  - title: "Search for user to message"
+    action: "fill"
+    target: "#messageSearchInput"
+    data:
+      value: "photographybuddy"
+
+  - title: "Select user from search results"
+    action: "click"
+    target: ".user-search-result:first-child"
+
+  - title: "Type message"
+    action: "fill"
+    target: "#messageInput"
+    data:
+      value: "Hi! Love your photography work. Would love to collaborate sometime!"
+
+  - title: "Send message"
+    action: "click"
+    target: ".send-message-btn"
+
+  - title: "Verify message sent"
+    action: "verify"
+    verification:
+      selector: ".message-sent"
+
+  # Account Settings and Privacy
+  - title: "Navigate to account settings"
+    action: "click"
+    target: ".nav-settings"
+
+  - title: "Go to privacy settings"
+    action: "click"
+    target: ".privacy-settings-tab"
+
+  - title: "Set profile to public"
+    action: "click"
+    target: "#profileVisibility_public"
+
+  - title: "Enable story sharing"
+    action: "click"
+    target: "#allowStorySharing"
+
+  - title: "Configure comment permissions"
+    action: "click"
+    target: "#commentPermissions"
+
+  - title: "Allow comments from everyone"
+    action: "click"
+    target: "option[value='everyone']"
+
+  - title: "Enable two-factor authentication"
+    action: "click"
+    target: "#enableTwoFactor"
+
+  - title: "Save privacy settings"
+    action: "click"
+    target: ".save-privacy-settings-btn"
+
+  - title: "Verify settings saved"
+    action: "verify"
+    verification:
+      text: "Privacy settings updated"
+
+  # Content Analytics
+  - title: "Navigate to creator dashboard"
+    action: "click"
+    target: ".nav-creator-dashboard"
+
+  - title: "View post analytics"
+    action: "click"
+    target: ".post-analytics-tab"
+
+  - title: "Select time period"
+    action: "click"
+    target: "#analyticsTimePeriod"
+
+  - title: "Choose last 7 days"
+    action: "click"
+    target: "option[value='7d']"
+
+  - title: "View engagement metrics"
+    action: "verify"
+    verification:
+      selector: ".engagement-metrics"
+
+  - title: "Export analytics report"
+    action: "click"
+    target: ".export-analytics-btn"
+
+  - title: "Verify report generation"
+    action: "verify"
+    verification:
+      text: "Analytics report ready"

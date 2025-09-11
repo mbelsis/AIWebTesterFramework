@@ -1,0 +1,242 @@
+name: "Enterprise Dashboard - Admin User Management"
+description: "Comprehensive test of admin dashboard functionality including user management, reporting, and system configuration"
+
+steps:
+  # Admin Authentication
+  - title: "Navigate to admin login"
+    action: "navigate"
+    target: "/admin/login"
+
+  - title: "Enter admin username"
+    action: "fill"
+    target: "#adminUsername"
+    data:
+      value: "admin_user"
+
+  - title: "Enter admin password"
+    action: "fill"
+    target: "#adminPassword"
+    data:
+      value: "AdminSecure456!"
+
+  - title: "Enable two-factor authentication"
+    action: "click"
+    target: "#enableTwoFactor"
+
+  - title: "Enter 2FA code"
+    action: "fill"
+    target: "#twoFactorCode"
+    data:
+      value: "123456"
+
+  - title: "Submit admin login"
+    action: "submit"
+    target: ".admin-login-form button[type='submit']"
+
+  - title: "Verify admin dashboard loaded"
+    action: "verify"
+    verification:
+      selector: ".admin-dashboard"
+
+  # System Overview and Analytics
+  - title: "Verify system metrics displayed"
+    action: "verify"
+    verification:
+      selector: ".system-metrics"
+
+  - title: "Check active users count"
+    action: "verify"
+    verification:
+      selector: ".active-users-count"
+
+  - title: "Navigate to analytics section"
+    action: "click"
+    target: ".nav-analytics"
+
+  - title: "Select date range for analytics"
+    action: "click"
+    target: "#dateRangePicker"
+
+  - title: "Choose last 30 days"
+    action: "click"
+    target: ".date-range-option[data-range='30d']"
+
+  - title: "Generate analytics report"
+    action: "click"
+    target: ".generate-report-btn"
+
+  - title: "Wait for report generation"
+    action: "wait"
+    data:
+      seconds: 5
+
+  - title: "Verify analytics charts loaded"
+    action: "verify"
+    verification:
+      selector: ".analytics-charts"
+
+  # User Management Operations
+  - title: "Navigate to user management"
+    action: "click"
+    target: ".nav-user-management"
+
+  - title: "Search for specific user"
+    action: "fill"
+    target: "#userSearchInput"
+    data:
+      value: "john.smith@company.com"
+
+  - title: "Execute user search"
+    action: "click"
+    target: ".user-search-btn"
+
+  - title: "Select user from results"
+    action: "click"
+    target: ".user-result:first-child"
+
+  - title: "View user details"
+    action: "verify"
+    verification:
+      selector: ".user-details-panel"
+
+  - title: "Edit user permissions"
+    action: "click"
+    target: ".edit-permissions-btn"
+
+  - title: "Add reporting permission"
+    action: "click"
+    target: "#permission_reporting"
+
+  - title: "Add analytics permission"
+    action: "click"
+    target: "#permission_analytics"
+
+  - title: "Save permission changes"
+    action: "click"
+    target: ".save-permissions-btn"
+
+  - title: "Verify permissions updated"
+    action: "verify"
+    verification:
+      text: "Permissions updated successfully"
+
+  # Bulk User Operations
+  - title: "Navigate to bulk user operations"
+    action: "click"
+    target: ".bulk-operations-tab"
+
+  - title: "Upload user CSV file"
+    action: "click"
+    target: "#csvFileUpload"
+
+  - title: "Select all imported users"
+    action: "click"
+    target: "#selectAllUsers"
+
+  - title: "Assign role to selected users"
+    action: "click"
+    target: "#bulkRoleAssignment"
+
+  - title: "Choose Standard User role"
+    action: "click"
+    target: "option[value='standard_user']"
+
+  - title: "Execute bulk assignment"
+    action: "click"
+    target: ".execute-bulk-operation-btn"
+
+  - title: "Confirm bulk operation"
+    action: "click"
+    target: ".confirm-bulk-operation-btn"
+
+  - title: "Wait for bulk operation completion"
+    action: "wait"
+    data:
+      seconds: 8
+
+  - title: "Verify bulk operation success"
+    action: "verify"
+    verification:
+      text: "Bulk operation completed"
+
+  # System Configuration
+  - title: "Navigate to system settings"
+    action: "click"
+    target: ".nav-system-settings"
+
+  - title: "Configure session timeout"
+    action: "fill"
+    target: "#sessionTimeout"
+    data:
+      value: "3600"
+
+  - title: "Enable audit logging"
+    action: "click"
+    target: "#enableAuditLogging"
+
+  - title: "Set log retention period"
+    action: "fill"
+    target: "#logRetentionDays"
+    data:
+      value: "90"
+
+  - title: "Configure backup frequency"
+    action: "click"
+    target: "#backupFrequency"
+
+  - title: "Select daily backups"
+    action: "click"
+    target: "option[value='daily']"
+
+  - title: "Save system configuration"
+    action: "click"
+    target: ".save-system-config-btn"
+
+  - title: "Verify configuration saved"
+    action: "verify"
+    verification:
+      text: "System configuration updated"
+
+  # Audit and Compliance
+  - title: "Navigate to audit logs"
+    action: "click"
+    target: ".nav-audit-logs"
+
+  - title: "Filter logs by user actions"
+    action: "click"
+    target: "#logFilter_user_actions"
+
+  - title: "Set audit date range"
+    action: "click"
+    target: "#auditDateRange"
+
+  - title: "Select last 7 days"
+    action: "click"
+    target: ".audit-range-option[data-range='7d']"
+
+  - title: "Apply audit filters"
+    action: "click"
+    target: ".apply-audit-filters-btn"
+
+  - title: "Export audit report"
+    action: "click"
+    target: ".export-audit-report-btn"
+
+  - title: "Verify audit report generated"
+    action: "verify"
+    verification:
+      text: "Audit report ready for download"
+
+  # Admin Session Logout
+  - title: "Open admin profile menu"
+    action: "click"
+    target: ".admin-profile-menu"
+
+  - title: "Logout from admin dashboard"
+    action: "click"
+    target: ".admin-logout-btn"
+
+  - title: "Verify logout successful"
+    action: "verify"
+    verification:
+      selector: ".admin-login-form"

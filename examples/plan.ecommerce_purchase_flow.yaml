@@ -1,0 +1,233 @@
+name: "E-Commerce Complete Purchase Flow"
+description: "Comprehensive test of user registration, product search, cart management, and checkout process for a large e-commerce platform"
+
+steps:
+  # User Registration Flow
+  - title: "Navigate to homepage"
+    action: "navigate"
+    target: "/"
+
+  - title: "Click sign up link"
+    action: "click"
+    target: "a[href='/register']"
+
+  - title: "Fill registration form - First Name"
+    action: "fill"
+    target: "#firstName"
+    data:
+      value: "Emma"
+
+  - title: "Fill registration form - Last Name"
+    action: "fill"
+    target: "#lastName"
+    data:
+      value: "Johnson"
+
+  - title: "Fill registration form - Email"
+    action: "fill"
+    target: "#email"
+    data:
+      value: "emma.johnson.test@example.com"
+
+  - title: "Fill registration form - Password"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "SecurePass123!"
+
+  - title: "Fill registration form - Confirm Password"
+    action: "fill"
+    target: "#confirmPassword"
+    data:
+      value: "SecurePass123!"
+
+  - title: "Accept terms and conditions"
+    action: "click"
+    target: "#acceptTerms"
+
+  - title: "Submit registration form"
+    action: "submit"
+    target: "button[type='submit']"
+
+  - title: "Verify registration success"
+    action: "verify"
+    verification:
+      text: "Account created successfully"
+
+  # Product Search and Selection
+  - title: "Search for products"
+    action: "fill"
+    target: "#searchInput"
+    data:
+      value: "wireless headphones"
+
+  - title: "Execute search"
+    action: "click"
+    target: "button.search-btn"
+
+  - title: "Verify search results displayed"
+    action: "verify"
+    verification:
+      selector: ".product-grid"
+
+  - title: "Apply price filter"
+    action: "click"
+    target: "#priceFilter100-200"
+
+  - title: "Apply brand filter"
+    action: "click"
+    target: "#brandFilterSony"
+
+  - title: "Wait for filtered results"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Select first product from results"
+    action: "click"
+    target: ".product-card:first-child .product-title"
+
+  - title: "Verify product details page"
+    action: "verify"
+    verification:
+      selector: ".product-details"
+
+  - title: "Select product color"
+    action: "click"
+    target: ".color-option[data-color='black']"
+
+  - title: "Select quantity"
+    action: "click"
+    target: "#quantity"
+
+  - title: "Set quantity to 2"
+    action: "fill"
+    target: "#quantity"
+    data:
+      value: "2"
+
+  - title: "Add product to cart"
+    action: "click"
+    target: ".add-to-cart-btn"
+
+  - title: "Verify product added to cart"
+    action: "verify"
+    verification:
+      text: "Added to cart"
+
+  # Shopping Cart Management
+  - title: "Navigate to shopping cart"
+    action: "click"
+    target: ".cart-icon"
+
+  - title: "Verify cart contains products"
+    action: "verify"
+    verification:
+      selector: ".cart-item"
+
+  - title: "Update item quantity"
+    action: "fill"
+    target: ".cart-item:first-child .quantity-input"
+    data:
+      value: "3"
+
+  - title: "Apply quantity update"
+    action: "click"
+    target: ".cart-item:first-child .update-quantity-btn"
+
+  - title: "Apply discount coupon"
+    action: "fill"
+    target: "#couponCode"
+    data:
+      value: "SAVE10"
+
+  - title: "Apply coupon"
+    action: "click"
+    target: ".apply-coupon-btn"
+
+  - title: "Verify discount applied"
+    action: "verify"
+    verification:
+      text: "Coupon applied"
+
+  # Checkout Process
+  - title: "Proceed to checkout"
+    action: "click"
+    target: ".checkout-btn"
+
+  - title: "Fill shipping address - Street"
+    action: "fill"
+    target: "#shippingStreet"
+    data:
+      value: "123 Main Street"
+
+  - title: "Fill shipping address - City"
+    action: "fill"
+    target: "#shippingCity"
+    data:
+      value: "San Francisco"
+
+  - title: "Select shipping state"
+    action: "click"
+    target: "#shippingState"
+
+  - title: "Choose California"
+    action: "click"
+    target: "option[value='CA']"
+
+  - title: "Fill ZIP code"
+    action: "fill"
+    target: "#shippingZip"
+    data:
+      value: "94102"
+
+  - title: "Select shipping method"
+    action: "click"
+    target: "#shippingMethod_standard"
+
+  - title: "Continue to payment"
+    action: "click"
+    target: ".continue-to-payment-btn"
+
+  - title: "Fill credit card number"
+    action: "fill"
+    target: "#cardNumber"
+    data:
+      value: "4111111111111111"
+
+  - title: "Fill card expiry"
+    action: "fill"
+    target: "#cardExpiry"
+    data:
+      value: "12/25"
+
+  - title: "Fill CVV"
+    action: "fill"
+    target: "#cardCVV"
+    data:
+      value: "123"
+
+  - title: "Fill cardholder name"
+    action: "fill"
+    target: "#cardholderName"
+    data:
+      value: "Emma Johnson"
+
+  - title: "Review order summary"
+    action: "verify"
+    verification:
+      selector: ".order-summary"
+
+  - title: "Place order"
+    action: "click"
+    target: ".place-order-btn"
+
+  - title: "Verify order confirmation"
+    action: "verify"
+    verification:
+      text: "Order confirmed"
+
+  - title: "Verify order number displayed"
+    action: "verify"
+    verification:
+      selector: ".order-number"
