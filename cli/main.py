@@ -24,9 +24,9 @@ def run(
         cr = None
         if control_room:
             from orchestrator.control_room import ControlRoom
-            cr = ControlRoom()
+            cr = ControlRoom()  # Will use dynamic port detection
             cr.start_in_background()
-            print(f"Control Room ➜ http://127.0.0.1:8788")
+            print(f"Control Room ➜ {cr.get_url()}")
 
         from orchestrator.graph import TestGraph
         graph = TestGraph(
@@ -45,7 +45,8 @@ def run(
 def control_room():
     """Start the Control Room web interface."""
     from orchestrator.control_room import ControlRoom
-    cr = ControlRoom()
+    cr = ControlRoom()  # Will use dynamic port detection
+    print(f"🎛️  Starting Control Room dashboard on {cr.get_url()}")
     cr.start()
 
 @app.command()
@@ -83,7 +84,11 @@ def generate(
 def mock_app():
     """Start the mock demo application."""
     import uvicorn
-    uvicorn.run("mock_app.app:app", host="127.0.0.1", port=5000, reload=True)
+    from utils.ports import find_free_port
+    
+    port = find_free_port(start=5000)
+    print(f"🚀 Starting mock app on http://127.0.0.1:{port}")
+    uvicorn.run("mock_app.app:app", host="127.0.0.1", port=port, reload=True)
 
 if __name__ == "__main__":
     app()

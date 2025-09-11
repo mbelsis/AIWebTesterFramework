@@ -7,10 +7,15 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from utils.ports import find_free_port
 
 class ControlRoom:
-    def __init__(self, port: int = 8788):
-        self.port = port
+    def __init__(self, port: Optional[int] = None):
+        # Use dynamic port detection if no specific port provided
+        if port is None:
+            self.port = find_free_port(start=8788)
+        else:
+            self.port = port
         self.app = FastAPI(title="AI WebTester Control Room")
         self.connections: Dict[str, WebSocket] = {}
         self.run_states: Dict[str, Dict] = {}
@@ -134,3 +139,7 @@ class ControlRoom:
     def start(self):
         """Start Control Room in foreground"""
         uvicorn.run(self.app, host="127.0.0.1", port=self.port)
+
+    def get_url(self) -> str:
+        """Get the Control Room URL"""
+        return f"http://127.0.0.1:{self.port}"
