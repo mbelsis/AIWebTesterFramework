@@ -132,9 +132,9 @@ async def login(request: Request, username: str = Form(...), password: str = For
     response.set_cookie(
         key="session_id", 
         value=session_id, 
-        httponly=True,
-        secure=False,  # Allow HTTP in development
-        samesite="lax"  # Allow cross-origin in iframe
+        httponly=False,  # Allow JS access for iframe compatibility
+        secure=False,     # Allow HTTP in development
+        samesite="none"   # Required for iframe/cross-origin contexts
     )
     return response
 
