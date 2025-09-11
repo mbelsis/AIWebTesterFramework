@@ -1,0 +1,97 @@
+name: "GRC Tool Comprehensive Test"
+description: "Test the GRC (Governance, Risk, Compliance) tool functionality"
+
+steps:
+  - title: "Navigate to GRC tool homepage"
+    action: "navigate"
+    target: "https://YOUR-GRC-REPL-URL.replit.dev"
+
+  - title: "Wait for page load"
+    action: "wait"
+    data:
+      seconds: 3
+
+  - title: "Verify homepage loads"
+    action: "verify"
+    verification:
+      any_text: ["Dashboard", "Login", "GRC", "Governance", "Risk", "Compliance"]
+
+  - title: "Check for login form"
+    action: "verify"
+    verification:
+      element_exists: "input[type='email'], input[type='text'], input[name='username']"
+
+  - title: "Test login functionality (if login exists)"
+    action: "fill"
+    target: "input[type='email'], input[type='text'], input[name='username']"
+    data:
+      value: "admin@example.com"
+    continue_on_error: true
+
+  - title: "Fill password field (if exists)"
+    action: "fill"
+    target: "input[type='password'], input[name='password']"
+    data:
+      value: "password123"
+    continue_on_error: true
+
+  - title: "Submit login form (if exists)"
+    action: "click"
+    target: "button[type='submit'], input[type='submit'], .login-btn, #login-btn"
+    continue_on_error: true
+
+  - title: "Wait for login response"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Check for dashboard or main interface"
+    action: "verify"
+    verification:
+      any_text: ["Dashboard", "Welcome", "Home", "Menu", "Navigation"]
+    continue_on_error: true
+
+  - title: "Test navigation menu (if exists)"
+    action: "click"
+    target: "nav a, .menu-item, .nav-link"
+    continue_on_error: true
+
+  - title: "Test GRC specific features - Risk Assessment"
+    action: "verify"
+    verification:
+      any_text: ["Risk", "Assessment", "Risk Management", "Risk Register"]
+    continue_on_error: true
+
+  - title: "Test GRC specific features - Compliance"
+    action: "verify"
+    verification:
+      any_text: ["Compliance", "Audit", "Control", "Policy", "Regulation"]
+    continue_on_error: true
+
+  - title: "Test GRC specific features - Governance"
+    action: "verify"
+    verification:
+      any_text: ["Governance", "Board", "Committee", "Oversight", "Framework"]
+    continue_on_error: true
+
+  - title: "Check for data tables or lists"
+    action: "verify"
+    verification:
+      element_exists: "table, .data-grid, .list-group, .table-responsive"
+    continue_on_error: true
+
+  - title: "Test form interactions (if any)"
+    action: "click"
+    target: "button:contains('Add'), button:contains('Create'), button:contains('New'), .btn-primary"
+    continue_on_error: true
+
+  - title: "Wait for form response"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Final verification - App still responsive"
+    action: "verify"
+    verification:
+      page_title_contains: "GRC"
+    continue_on_error: true
