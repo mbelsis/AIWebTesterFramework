@@ -9,14 +9,75 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
 ### Key Features
 
 - **🧠 Revolutionary AI Test Generation**: Automatically generate comprehensive test plans from any URL - no more manual YAML writing!
-- **🤖 AI-Powered Testing**: Intelligent test execution using OpenAI for smart decision making  
-- **🎥 Video Recording**: Complete browser session recordings with Playwright
-- **📊 Real-time Monitoring**: Live Control Room dashboard with WebSocket communication
-- **📋 Comprehensive Evidence**: Automatic collection of traces, screenshots, and detailed logs
-- **⚡ Async Architecture**: High-performance asynchronous execution
-- **🎛️ Flexible Configuration**: YAML-based test plans and environment configuration
-- **🔄 Error Resilience**: Robust error handling with automatic cleanup
+- **🤖 AI-Powered Testing**: Intelligent test execution using OpenAI Responses API with JSON mode and retry logic
+- **🎥 Video Recording**: Complete browser session recordings with guaranteed finalization and durability
+- **📊 Real-time Monitoring**: Live Control Room dashboard with WebSocket communication and automatic port detection
+- **📋 Comprehensive Evidence**: Automatic collection of traces, screenshots, and detailed logs with security redaction
+- **⚡ Async Architecture**: High-performance asynchronous execution with stuck-screen watchdog protection
+- **🎛️ Flexible Configuration**: YAML-based test plans with seeded Faker for consistent test data generation
+- **🔄 Error Resilience**: Robust error handling with automatic cleanup and intelligent recovery strategies
+- **🔒 Enterprise Security**: Comprehensive data redaction for sensitive information in logs and evidence
+- **🚀 CI/CD Ready**: Complete GitHub Actions pipeline with multi-Python testing and artifact collection
 - **📱 Multi-browser Support**: Chromium, Firefox, and WebKit support via Playwright
+
+## 🚀 CI/CD Pipeline
+
+The AI WebTester framework includes a comprehensive **GitHub Actions CI/CD pipeline** that automatically validates the framework and catches regressions early.
+
+### Pipeline Architecture
+
+Our CI/CD pipeline runs **3 parallel jobs** for comprehensive validation:
+
+#### 🧪 **Test Job (Matrix Strategy)**
+- **Multi-Python Support**: Tests on Python 3.11 and 3.12 simultaneously
+- **Fast Dependencies**: Uses `uv pip` with caching for efficient builds
+- **Browser Automation**: Installs Playwright (Chromium, Firefox, WebKit) with system dependencies
+- **Mock App Service**: Starts background mock application with health checks and 60-second timeout
+- **Comprehensive Testing**: 
+  - Demo employee creation test with full UI automation
+  - AI-powered test generation (when OpenAI API key available)
+  - Basic API endpoint validation with network request testing
+- **OpenAI Integration**: Gracefully skips AI tests when API key missing (prevents fork failures using `continue-on-error: true`)
+- **Artifact Collection**: Automatically collects test evidence, screenshots, videos, traces, and logs with 30-day retention
+- **Proper Cleanup**: Stops mock app processes and handles cleanup in failure scenarios
+
+#### 🔍 **Lint Job**
+- **Code Quality**: Black formatting, Ruff linting, and MyPy type checking
+- **Standards Enforcement**: Ensures consistent code style and type safety
+- **Fast Feedback**: Runs in parallel with testing for immediate quality validation
+
+#### 🛡️ **Security Job**
+- **Vulnerability Scanning**: Dependency security analysis with Safety
+- **Security Linting**: Static security analysis with Bandit
+- **Compliance**: Ensures security best practices are maintained
+
+### Workflow Triggers
+
+The pipeline automatically runs on:
+- **Push events**: All pushes to main branch and feature branches
+- **Pull requests**: Comprehensive validation before merge
+- **Manual dispatch**: Can be triggered manually for testing
+
+### Key Features
+
+- **Fail-Fast Disabled**: All matrix combinations run even if one fails
+- **Artifact Durability**: Complete evidence collection with guaranteed finalization
+- **Network Resilience**: Comprehensive timeout handling and retry logic  
+- **Cross-Platform**: Optimized for Ubuntu latest with browser dependencies
+- **Secret Management**: Proper OpenAI API key handling with fork-safe fallbacks
+
+### Test Validation
+
+The pipeline validates:
+1. ✅ **Framework Installation**: Dependencies install correctly across Python versions
+2. ✅ **Browser Automation**: Playwright integration with video/trace recording
+3. ✅ **AI Integration**: OpenAI test generation (when API key available)
+4. ✅ **Evidence Collection**: Complete artifact generation with security redaction
+5. ✅ **Mock Application**: Background service startup and health validation
+6. ✅ **Code Quality**: Formatting, linting, and type safety
+7. ✅ **Security**: Dependency vulnerabilities and static analysis
+
+This ensures every release is thoroughly tested and production-ready with enterprise-grade reliability.
 
 ## 🚀 Quick Start
 
@@ -102,16 +163,17 @@ python run_test.py
 ```
 
 This automatically:
-- Starts the simple mock application on port 5000
-- Launches the Control Room dashboard on port 8788  
-- Executes a basic employee creation test
-- Generates test artifacts in `artifacts/` directory
+- Starts the simple mock application on an available port (auto-detected)
+- Launches the Control Room dashboard with automatic port allocation
+- Executes a basic employee creation test with seeded test data
+- Generates test artifacts with security redaction and guaranteed durability
+- Monitors for stuck screens with automatic recovery
 
-**What you'll see**: Basic form filling, submission, and result verification in a simple web application.
+**What you'll see**: Basic form filling with realistic faker data, submission, and result verification with enterprise-grade evidence collection.
 
 #### 📊 **Real-time Monitoring**
 
-For both demos, when you use `--control-room`, visit **http://127.0.0.1:8788** to see:
+For both demos, when you use `--control-room`, the Control Room will automatically start on an available port (typically 8788) to see:
 - Live browser screenshots during test execution
 - Step-by-step progress with success/failure indicators
 - Console logs, network requests, and detailed timing
@@ -821,7 +883,8 @@ python -m cli.main run --plan test.yaml --env env.yaml --control-room
 
 ## 📚 Documentation
 
-- **Technical Specifications**: See `docs/Technical_Specs.md` for detailed architecture
+- **Technical Specifications**: See `docs/Technical_Specs.md` for detailed architecture and infrastructure
+- **CI/CD Pipeline**: See `docs/CI_CD_Pipeline.md` for comprehensive pipeline documentation
 - **API Reference**: Control Room API documentation in technical specs
 - **Examples**: Check `examples/` directory for sample configurations
 

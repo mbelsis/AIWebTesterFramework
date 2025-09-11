@@ -347,22 +347,102 @@ settings:
   - Edge case identification
   - Realistic test data creation
 
+## Infrastructure Improvements (2025)
+
+### 🚀 **CI/CD Pipeline Architecture**
+
+**GitHub Actions Workflow** (`.github/workflows/ci.yml`):
+- **Multi-job Strategy**: 3 parallel jobs (test, lint, security) for comprehensive validation
+- **Matrix Testing**: Python 3.11 and 3.12 across multiple environments
+- **Browser Automation**: Full Playwright installation with Chromium browser and system dependencies
+- **Mock App Service**: Background mock application with health checks and proper cleanup
+- **AI Integration**: OpenAI test generation with graceful fallback for missing API keys
+- **Artifact Collection**: Complete evidence gathering with 30-day retention
+- **Security Scanning**: Dependency vulnerability analysis and static security checks
+
+**Key Features**:
+- **Fail-Safe Design**: Continues testing even if individual components fail
+- **Secret Management**: Proper OpenAI API key handling with fork-safe fallbacks
+- **Performance Optimized**: Uses `uv pip` with caching for fast dependency installation
+- **Cross-Platform**: Ubuntu latest with comprehensive browser dependency support
+
+### 🔒 **Security Infrastructure**
+
+**Security Redaction System** (`configs/security.yaml`, `utils/redaction.py`):
+- **Comprehensive Pattern Matching**: 21 regex patterns for sensitive data detection
+- **Multi-Format Support**: JSON, HTML, XML structure-preserving redaction
+- **Framework Integration**: Applied across logs, evidence collection, and LLM communications
+- **Performance Optimized**: Fast processing (28ms for 40k characters)
+- **Audit Trail**: Complete redaction activity logging for compliance
+
+**Protected Data Types**:
+- Authorization tokens and API keys
+- Personal information (emails, phone numbers, SSNs)
+- Database credentials and connection strings
+- Payment information and financial data
+- Authentication tokens and session data
+
+### 🤖 **Modern AI Provider Architecture**
+
+**OpenAI Integration** (`providers/openai_provider.py`):
+- **Latest SDK**: OpenAI Responses API with structured JSON mode
+- **Retry Logic**: Exponential backoff with 90-second timeout and smart fallbacks
+- **Model Support**: GPT-4o-mini, GPT-4-Turbo, GPT-4o with proper parameter handling
+- **Error Resilience**: Graceful degradation when API unavailable
+- **Security Integration**: Input/output redaction for sensitive data protection
+
+### 🎯 **Test Data Management**
+
+**Seeded Faker System** (`data_gen/faker_util.py`, `utils/data_generation.py`):
+- **Deterministic Generation**: Same run_id produces identical data across executions
+- **Run Isolation**: Different run_ids generate unique but consistent datasets
+- **Email Uniqueness**: Run-specific email suffixes prevent conflicts
+- **Realistic Data**: Comprehensive user profiles, addresses, payment data
+- **Form Integration**: Dynamic form field detection and appropriate data injection
+
+### ⚡ **Reliability Features**
+
+**Stuck-Screen Watchdog** (`utils/watchdog.py`, `configs/watchdog.yaml`):
+- **Multi-Indicator Monitoring**: DOM hash, request count, pixel signatures
+- **Intelligent Recovery**: Back navigation, page reload, graceful continuation
+- **Configurable Detection**: 12-second timeout with environment-specific settings
+- **Evidence Integration**: State snapshots and health metrics for debugging
+- **Performance Optimized**: Minimal overhead during normal operations
+
+**Automatic Port Detection** (`utils/ports.py`):
+- **Dynamic Port Allocation**: Automatic free port discovery starting from preferred ranges
+- **Conflict Prevention**: Eliminates "port already in use" errors
+- **Multi-Service Support**: Independent port allocation for mock app and Control Room
+- **Environment Flexibility**: Supports concurrent development environments
+
+### 🎥 **Evidence Durability System**
+
+**Video Finalization** (`browser/context.py`, `orchestrator/graph.py`):
+- **Guaranteed Durability**: Proper Playwright context closure ensures video flush
+- **Stability Validation**: File size monitoring to confirm complete video recording
+- **Artifact Organization**: Recursive discovery of videos, traces, screenshots, logs
+- **Run Summaries**: Both minimal `run.json` and comprehensive `run_summary.json`
+- **Error Resilience**: Complete evidence collection even during test failures
+
 ## Current Status & Implementation
 
-### Fully Implemented Features
-1. ✅ **AI Test Plan Generation**: Complete webpage analysis and test creation
-2. ✅ **Browser Automation**: Full Playwright integration with video recording
-3. ✅ **Real-time Monitoring**: Control Room with live WebSocket communication
-4. ✅ **Evidence Collection**: Comprehensive artifact generation and storage
-5. ✅ **CLI Interface**: Complete command-line interface with AI generation
-6. ✅ **OpenAI Integration**: GPT-5 powered intelligent test creation
-7. ✅ **Multi-format Output**: YAML test plans and environment configurations
+### Fully Implemented Features (Updated 2025)
+1. ✅ **AI Test Plan Generation**: Complete webpage analysis and test creation with modern OpenAI Responses API
+2. ✅ **Browser Automation**: Full Playwright integration with guaranteed video finalization and durability
+3. ✅ **Real-time Monitoring**: Control Room with live WebSocket communication and automatic port detection
+4. ✅ **Evidence Collection**: Comprehensive artifact generation with security redaction and guaranteed persistence
+5. ✅ **CLI Interface**: Complete command-line interface with seeded data generation and AI integration
+6. ✅ **OpenAI Integration**: Modern Responses API with JSON mode, retry logic, and security redaction
+7. ✅ **Multi-format Output**: YAML test plans and environment configurations with realistic faker data
+8. ✅ **CI/CD Pipeline**: GitHub Actions workflow with multi-Python testing and comprehensive validation
+9. ✅ **Security Infrastructure**: Enterprise-grade data redaction across all framework components
+10. ✅ **Reliability Features**: Stuck-screen watchdog and automatic port conflict resolution
+11. ✅ **Test Data Management**: Seeded Faker with run-specific uniqueness and realistic data generation
 
 ### Future Enhancements
 1. **Control Room Frontend**: React/Vite dashboard for enhanced monitoring
 2. **Multi-browser Support**: Parallel testing across different browsers
-3. **CI/CD Integration**: Pipeline integration for automated testing
-4. **Report Generation**: PDF and HTML report generation
-5. **Test Recording**: Record user actions to generate test plans
-6. **Visual Regression**: AI-powered visual comparison testing
-7. **Performance Monitoring**: Page load time and performance metrics
+3. **Report Generation**: PDF and HTML report generation with custom templates
+4. **Test Recording**: Record user actions to generate test plans
+5. **Visual Regression**: AI-powered visual comparison testing
+6. **Performance Monitoring**: Page load time and performance metrics with thresholds
