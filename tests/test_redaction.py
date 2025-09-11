@@ -36,7 +36,7 @@ class TestRedactionPatterns:
     def test_authorization_bearer_tokens(self):
         """Test Bearer token redaction in Authorization headers."""
         test_cases = [
-            ("Authorization: Bearer sk-1234567890abcdef", "Authorization: Bearer [REDACTED_TOKEN]"),
+            ("Authorization: Bearer sk-fakeshortkey123", "Authorization: Bearer [REDACTED_TOKEN]"),
             ("authorization: bearer abc123xyz789", "authorization: bearer [REDACTED_TOKEN]"),
             ("Authorization:   Bearer   eyJhbGciOiJIUzI1NiJ9", "Authorization:   Bearer   [REDACTED_TOKEN]"),
         ]
@@ -44,7 +44,7 @@ class TestRedactionPatterns:
         for original, expected in test_cases:
             result = self.redactor.redact_text(original)
             assert "[REDACTED_TOKEN]" in result
-            assert "sk-1234567890abcdef" not in result
+            assert "sk-fakeshortkey123" not in result
     
     def test_authorization_basic_credentials(self):
         """Test Basic auth credential redaction."""
@@ -89,22 +89,22 @@ class TestRedactionPatterns:
     def test_aws_access_keys(self):
         """Test AWS access key ID redaction."""
         test_cases = [
-            ("AKIAIOSFODNN7EXAMPLE", "[REDACTED_AWS_ACCESS_KEY]"),
+            ("AKIAFAKEKEY123456789", "[REDACTED_AWS_ACCESS_KEY]"),
             ("ASIAIOSFODNN7EXAMPLE", "[REDACTED_AWS_ACCESS_KEY]"),
-            ("Access Key: AKIA1234567890ABCDEF", "Access Key: [REDACTED_AWS_ACCESS_KEY]"),
+            ("Access Key: AKIAFAKEKEY987654321", "Access Key: [REDACTED_AWS_ACCESS_KEY]"),
         ]
         
         for original, expected in test_cases:
             result = self.redactor.redact_text(original)
             assert "[REDACTED_AWS_ACCESS_KEY]" in result
-            assert "AKIAIOSFODNN7EXAMPLE" not in result
+            assert "AKIAFAKEKEY123456789" not in result
     
     def test_aws_secret_keys(self):
         """Test AWS secret access key redaction."""
         test_cases = [
-            ("aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", 
+            ("aws_secret_access_key=fakesecretkey123456789012345678901234567890", 
              "aws_secret_access_key=[REDACTED_AWS_SECRET]"),
-            ("AWS_SECRET_KEY: abcdefghijklmnopqrstuvwxyz0123456789ABCD", 
+            ("AWS_SECRET_KEY: fakesecretkey987654321098765432109876543", 
              "AWS_SECRET_KEY=[REDACTED_AWS_SECRET]"),
         ]
         
@@ -218,8 +218,8 @@ class TestRedactionPatterns:
     def test_openai_api_keys(self):
         """Test OpenAI API key redaction."""
         test_cases = [
-            "sk-abcdefghijklmnopqrstuvwx",  # Standard format that should match
-            "sk-1234567890abcdefghijklmnopqrstuvwxyz",  # Longer key
+            "sk-fakekeytestXXXXXXXXXXXXXXX",  # Standard format that should match
+            "sk-fakelongkeytestXXXXXXXXXXXXXXXXX",  # Longer key
         ]
         
         for original in test_cases:
@@ -230,17 +230,17 @@ class TestRedactionPatterns:
     def test_github_tokens(self):
         """Test GitHub token redaction."""
         test_cases = [
-            ("ghp_1234567890abcdefghijklmnopqrstuvwxyz12", "[REDACTED_GITHUB_TOKEN]"),
-            ("gho_abcdefghijklmnopqrstuvwxyz1234567890ab", "[REDACTED_GITHUB_TOKEN]"),
-            ("ghu_1234567890abcdefghijklmnopqrstuvwxyz12", "[REDACTED_GITHUB_TOKEN]"),
-            ("ghs_abcdefghijklmnopqrstuvwxyz1234567890ab", "[REDACTED_GITHUB_TOKEN]"),
-            ("ghr_1234567890abcdefghijklmnopqrstuvwxyz12", "[REDACTED_GITHUB_TOKEN]"),
+            ("ghp_fakegithubtoken123456789012345678", "[REDACTED_GITHUB_TOKEN]"),
+            ("gho_fakegithubtoken123456789012345678", "[REDACTED_GITHUB_TOKEN]"),
+            ("ghu_fakegithubtoken123456789012345678", "[REDACTED_GITHUB_TOKEN]"),
+            ("ghs_fakegithubtoken123456789012345678", "[REDACTED_GITHUB_TOKEN]"),
+            ("ghr_fakegithubtoken123456789012345678", "[REDACTED_GITHUB_TOKEN]"),
         ]
         
         for original, expected in test_cases:
             result = self.redactor.redact_text(original)
             assert "[REDACTED_GITHUB_TOKEN]" in result
-            assert "ghp_1234567890abcdefghijklmnopqrstuvwxyz12" not in result
+            assert "ghp_fakegithubtoken123456789012345678" not in result
     
     def test_stripe_api_keys(self):
         """Test Stripe API key redaction."""
@@ -339,7 +339,7 @@ class TestContentTypes:
                 "username": "john_doe",
                 "password": "secret123",
                 "email": "john@example.com",
-                "api_key": "sk-abcdefghijklmnopqrstuvwx",
+                "api_key": "sk-fakekey123456789012345",
                 "profile": {
                     "phone": "555-123-4567",
                     "address": "123 Main St"
@@ -347,7 +347,7 @@ class TestContentTypes:
             },
             "tokens": [
                 "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.signature",
-                "ghp_1234567890abcdefghijklmnopqrstuvwxyz12"
+                "ghp_fakegithubtoken123456789012345678"
             ],
             "config": {
                 "database_url": "postgresql://user:pass@localhost/db",
@@ -383,7 +383,7 @@ class TestContentTypes:
         json_string = '''
         {
             "auth": {
-                "token": "sk-abcdefghijklmnopqrstuvwx",
+                "token": "sk-fakekey123456789012345",
                 "user": "admin@company.com"
             }
         }
@@ -399,14 +399,14 @@ class TestContentTypes:
     
     def test_json_malformed_string(self):
         """Test JSON redaction with malformed JSON string."""
-        malformed_json = "{ invalid json with token: sk-abcdefghijklmnop }"
+        malformed_json = "{ invalid json with token: sk-fakeshortkey123 }"
         
         result = self.redactor.redact_json(malformed_json)
         
         # Should treat as text and redact
         assert isinstance(result, str)
         assert "[REDACTED_OPENAI_KEY]" in result
-        assert "sk-abcdefghijklmnop" not in result
+        assert "sk-fakeshortkey123" not in result
     
     def test_html_content_redaction(self):
         """Test HTML content redaction."""
@@ -434,7 +434,7 @@ class TestContentTypes:
             <username>john</username>
             <password>secret123</password>
             <email>john@example.com</email>
-            <token>sk-abcdefghijklmnopqrstuvwx</token>
+            <token>sk-fakekey123456789012345</token>
         </user>
         '''
         
@@ -443,7 +443,7 @@ class TestContentTypes:
         assert "[REDACTED_EMAIL]" in result
         assert "[REDACTED_OPENAI_KEY]" in result
         assert "john@example.com" not in result
-        assert "sk-abcdefghijklmnopqrstuvwx" not in result
+        assert "sk-fakekeytestXXXXXXXXXXXXXXX" not in result
     
     def test_url_redaction(self):
         """Test URL-specific redaction."""
@@ -470,7 +470,7 @@ class TestHeaderRedaction:
     def test_sensitive_headers(self):
         """Test redaction of sensitive HTTP headers."""
         headers = {
-            "Authorization": "Bearer sk-abcdefghijklmnopqrstuvwx",
+            "Authorization": "Bearer sk-fakekey123456789012345",
             "X-API-Key": "secret_api_key_123",
             "Cookie": "session=abc123; user=john",
             "Content-Type": "application/json",
@@ -536,7 +536,7 @@ class TestEdgeCases:
         mixed_text = """
         Hello user@example.com,
         Your account balance is $100.
-        Please use API key: sk-abcdefghijklmnopqrstuvwx
+        Please use API key: sk-fakekey123456789012345
         Have a great day!
         """
         
@@ -550,7 +550,7 @@ class TestEdgeCases:
     
     def test_multiple_patterns_same_text(self):
         """Test multiple patterns matching in the same text."""
-        text = "User: admin@example.com, Password: secret123, Token: sk-abcdefghijklmnop"
+        text = "User: admin@example.com, Password: secret123, Token: sk-fakeshortkey123"
         
         result = self.redactor.redact_text(text)
         
@@ -559,7 +559,7 @@ class TestEdgeCases:
         assert "admin@example.com" not in result
         assert "secret123" not in result
         # OpenAI key pattern may not match exactly, but some redaction should occur
-        assert "sk-abcdefghijklmnop" not in result or "[REDACTED" in result
+        assert "sk-fakekeytestXXXXXXXXXXXXXXX" not in result or "[REDACTED" in result
     
     def test_nested_json_redaction(self):
         """Test deeply nested JSON redaction."""
@@ -591,7 +591,7 @@ class TestEdgeCases:
             "normal string",
             "email: user@example.com",
             {"password": "secret123"},
-            ["nested", "sk-abcdefghijklmnopqrstuvwx"]
+            ["nested", "sk-fakekeytestXXXXXXXXXXXXXXX"]
         ]
         
         result = self.redactor.redact_json(array_data)
@@ -649,7 +649,7 @@ class TestEdgeCases:
     
     def test_unicode_text(self):
         """Test redaction with Unicode characters."""
-        unicode_text = "用户邮箱: user@example.com, пароль: secret123, トークン: sk-abcdefghijklmnop"
+        unicode_text = "用户邮箱: user@example.com, пароль: secret123, トークン: sk-fakeshortkey123"
         
         result = self.redactor.redact_text(unicode_text)
         
@@ -673,7 +673,7 @@ class TestPerformance:
         sensitive_parts = [
             "Email: user@example.com ",
             "Password: secret123 ",
-            "API Key: sk-abcdefghijklmnopqrstuvwx ",
+            "API Key: sk-fakekeytestXXXXXXXXXXXXXXX ",
             "Token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.sig "
         ]
         
@@ -694,7 +694,7 @@ class TestPerformance:
         assert "[REDACTED_OPENAI_KEY]" in result
         assert "[REDACTED_JWT]" in result
         assert "user@example.com" not in result
-        assert "sk-abcdefghijklmnopqrstuvwx" not in result
+        assert "sk-fakekeytestXXXXXXXXXXXXXXX" not in result
     
     def test_large_json_performance(self):
         """Test JSON redaction performance with large nested structure."""
@@ -743,8 +743,8 @@ class TestStatistics:
         Email: user1@example.com
         Email: user2@example.com  
         Password: secret123
-        API Key: sk-abcdefghijklmnopqrstuvwx
-        Token: sk-anotherkeyabcdefghijklmnop
+        API Key: sk-fakekeytestXXXXXXXXXXXXXXX
+        Token: sk-anotherfakekeytestXXXXXXXXXX
         """
         
         self.redactor.redact_text(text_with_multiple_patterns)
@@ -915,7 +915,7 @@ class TestEventsJsonRedaction:
                     "request": {
                         "headers": {
                             "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature",
-                            "X-API-Key": "live_api_key_xyz789abc"
+                            "X-API-Key": "fake_api_key_test12345"
                         },
                         "body": {
                             "credit_card": "4111111111111111",
@@ -1111,7 +1111,7 @@ class TestIntegration:
                     "endpoint": "/api/v1/users",
                     "headers": {
                         "Authorization": "Bearer sk-apikey123456789abcdef",
-                        "X-API-Key": "live_key_xyz789abc123",
+                        "X-API-Key": "fake_key_test123456789",
                         "Content-Type": "application/json"
                     },
                     "body": '{"password": "newsecret123", "phone": "555-123-4567"}'
@@ -1122,7 +1122,7 @@ class TestIntegration:
                 "INSERT INTO payments (card_number) VALUES ('4111111111111111')"
             ],
             "external_urls": [
-                "https://api.stripe.com/v1/charges?key=sk_live_abcdef123456",
+                "https://api.stripe.com/v1/charges?key=sk_fake_testkey123456",
                 "postgresql://dbuser:dbpass@production.db.com:5432/app"
             ]
         }
@@ -1166,8 +1166,8 @@ class TestIntegration:
                     "email": f"user{i}@example.com",
                     "password": f"secret{i}pass",
                     "api_keys": [
-                        f"sk-{i:020d}abcdefghijklmnop",
-                        f"pk_live_{i:020d}xyzabcdef"
+                        f"sk-{i:020d}faketestkey123456",
+                        f"pk_fake_{i:020d}testkey123"
                     ],
                     "profile": {
                         "phone": f"555-{i:03d}-{i:04d}",
