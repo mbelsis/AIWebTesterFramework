@@ -681,7 +681,9 @@ class TestPerformance:
         for i in range(500):  # Create ~40k character text
             large_text += base_text
             if i % 50 == 0:  # Add sensitive data every 50 iterations
-                large_text += sensitive_parts[i % len(sensitive_parts)]
+                # Ensure all sensitive data types are added by cycling through them more effectively
+                part_index = (i // 50) % len(sensitive_parts)
+                large_text += sensitive_parts[part_index]
         
         assert len(large_text) > 40000  # Ensure we have large text
         

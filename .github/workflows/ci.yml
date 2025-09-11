@@ -123,6 +123,12 @@ jobs:
       run: |
         uv pip install --system requests
 
+    - name: Run security redaction tests
+      run: |
+        python -m pytest tests/test_redaction.py -v --junitxml=test-results-redaction.xml
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
     - name: Run basic API tests (Python unit tests)
       run: |
         python -c "
@@ -170,6 +176,7 @@ jobs:
         name: test-artifacts-py${{ matrix.python-version }}
         path: |
           artifacts/
+          test-results-redaction.xml
           **/*.log
           **/*.har
           **/*.zip

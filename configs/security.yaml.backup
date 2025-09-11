@@ -28,11 +28,6 @@ redaction:
       replacement: "\\1=[REDACTED_SESSION]"
       description: "Session tokens and IDs"
       
-    - name: "standalone_session_id"
-      regex: "\\bsess_[A-Za-z0-9_]{8,}"
-      replacement: "[REDACTED_SESSION]"
-      description: "Standalone session IDs with sess_ prefix"
-      
     # AWS Credentials
     - name: "aws_access_key"
       regex: "(AKIA|ASIA)[0-9A-Z]{16}"
@@ -44,18 +39,6 @@ redaction:
       replacement: "\\g<1>=[REDACTED_AWS_SECRET]"
       description: "AWS secret access keys"
       
-    # URLs with credentials (MOVED HIGHER to take priority over email)
-    - name: "url_with_credentials"
-      regex: "(?i)(https?://)([^:]+):([^@]+)@"
-      replacement: "\\g<1>[REDACTED_USER]:[REDACTED_PASS]@"
-      description: "URLs containing credentials"
-      
-    # Credit Card Information (MOVED HIGHER to take priority over phone)
-    - name: "credit_card"
-      regex: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b"
-      replacement: "[REDACTED_CREDIT_CARD]"
-      description: "Credit card numbers"
-      
     # Personal Information
     - name: "email_address"
       regex: "(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b"
@@ -63,14 +46,20 @@ redaction:
       description: "Email addresses"
       
     - name: "phone_number"
-      regex: "(?:\\+1[-\\s.]?\\(?[2-9][0-8][0-9]\\)?[-\\s.]?[2-9][0-9]{2}[-\\s.]?[0-9]{4}|\\([2-9][0-8][0-9]\\)\\s?[2-9][0-9]{2}[-\\s.]?[0-9]{4}|[2-9][0-8][0-9][-\\s.]?[2-9][0-9]{2}[-\\s.]?[0-9]{4})"
+      regex: "(?:\\+?1[-\\s.]?)?\\(?[2-9][0-8][0-9]\\)?[-\\s.]?[2-9][0-9]{2}[-\\s.]?[0-9]{4}|\\+1-\\d{3}-\\d{3}-\\d{4}"
       replacement: "[REDACTED_PHONE]"
-      description: "US phone numbers in standard formats"
+      description: "US phone numbers including +1-555-123-4567 format"
       
     - name: "ssn"
       regex: "\\b\\d{3}-?\\d{2}-?\\d{4}\\b"
       replacement: "[REDACTED_SSN]"
       description: "Social Security Numbers"
+      
+    # Credit Card Information
+    - name: "credit_card"
+      regex: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b"
+      replacement: "[REDACTED_CREDIT_CARD]"
+      description: "Credit card numbers"
       
     - name: "cvv"
       regex: "(?i)(cvv|cvc|cid|security\\s*code)\\s*[:=]\\s*\\d{3,4}"
@@ -90,7 +79,7 @@ redaction:
       
     # API Keys and Secrets
     - name: "openai_api_key"
-      regex: "sk-[A-Za-z0-9]{15,}"
+      regex: "sk-[A-Za-z0-9]{20,}"
       replacement: "[REDACTED_OPENAI_KEY]"
       description: "OpenAI API keys"
       
@@ -108,6 +97,12 @@ redaction:
       regex: "eyJ[A-Za-z0-9+/=]*\\.[A-Za-z0-9+/=]*\\.[A-Za-z0-9+/=]*"
       replacement: "[REDACTED_JWT]"
       description: "JSON Web Tokens"
+      
+    # URLs with credentials
+    - name: "url_with_credentials"
+      regex: "(?i)(https?://)([^:]+):([^@]+)@"
+      replacement: "\\g<1>[REDACTED_USER]:[REDACTED_PASS]@"
+      description: "URLs containing credentials"
       
     # Generic secrets (broad pattern)
     - name: "generic_secret"
