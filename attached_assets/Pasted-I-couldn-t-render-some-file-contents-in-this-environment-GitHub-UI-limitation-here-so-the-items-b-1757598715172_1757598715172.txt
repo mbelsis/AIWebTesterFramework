@@ -1,0 +1,44 @@
+I couldn’t render some file contents in this environment (GitHub UI limitation here), so the items below are “verify or add” tasks based on your README claims and the repo tree.
+Confirm Control Room backend & static frontend are present and wired.
+README promises a WS endpoint (/ws/{run_id}) and live artifacts. Make sure the FastAPI app and a built frontend (e.g., control_room/frontend/dist) are actually in the repo and served, and that cli.main control-room binds to an open port automatically. If these files aren’t checked in, include a minimal Hello-UI so newcomers see something without building React first. 
+GitHub
+Keep artifacts out of git.
+You have a .gitignore file in the tree; double-check it excludes artifacts/, trace.zip, HARs, screenshots, and videos (I couldn’t open the file to confirm). This prevents repo bloat and accidental evidence leaks. 
+GitHub
+Pin a real CI workflow to match the README.
+The .github/workflows/ directory exists; ensure there’s at least one workflow that actually: installs browsers (playwright install --with-deps), boots a demo app, runs a smoke plan headless, and uploads artifacts on failure. (Your README describes exactly this; good to keep code and docs in lockstep.) 
+GitHub
++1
+Security redaction config must be enforced, not just documented.
+README mentions “comprehensive data redaction”. Verify there’s a concrete config (e.g., configs/security.yaml) and that it’s applied in the DOM snapshotter, console/network sinks, and anything sent to the LLM. Add a unit test that feeds in tokens/emails and asserts [REDACTED] appears in events.json. 
+GitHub
+OpenAI provider: Responses API + backoff.
+README says “Responses API with JSON mode and retry.” Confirm the provider uses JSON-mode (or response_format={"type":"json_object"}), idempotent prompts, and exponential backoff on 429/5xx. Also ensure the pipeline gracefully skips AI steps in CI when OPENAI_API_KEY is absent (you mention this behavior).
+GitHub
+Watchdog and uniqueness: test coverage.
+You have test_watchdog_core.py in root — great signal. Make sure it covers the triad condition (DOM hash + pixel signature + network idle) and that a flakiness test seeds Faker & suffixes unique fields with run_id for deterministic replays. 
+GitHub
+Port management everywhere.
+README shows guidance for killing processes on 5000/8788. Since you also claim automatic port allocation, confirm all entrypoints (mock app, control-room, runner) actually probe for a free port and print it, and that the env files can reference {run_id} and {control_room_port} placeholders. 
+GitHub
+Package polish.
+Expose console entry points in pyproject.toml ([project.scripts] aiwt = "cli.main:app"), so users can pipx install and run aiwt run directly.
+Add __version__ and a CHANGELOG.md so CI can tag releases.
+Consider a small SECURITY.md and CONTRIBUTING.md to look enterprise-ready.
+Docs/internal consistency.
+The README shows sample YAML for plans/env; ensure the examples under examples/ match selectors in the demo apps (IDs, names) to avoid day-1 confusion. The two demo paths (calendar vs. mock app) are great — just keep both examples in sync with the code. 
+GitHub
+Observability (optional but valuable).
+Add OpenTelemetry spans around step execution, LLM calls, and Playwright actions, tagged with run_id. Surface a timing summary in the Control Room (“LLM ms”, “DOM ops”, “network wait”), so debugging slow steps is trivial. (Your audience will love this.)
+“If you only do three things”
+Ensure Control Room code and a minimal frontend build are in the repo and wired to cli.main control-room (serve /dist, WS at /ws/{run_id}). 
+GitHub
+Verify .github/workflows actually runs the smoke plan with artifact upload on failure. 
+GitHub
+Confirm redaction and OpenAI backoff/JSON mode are enforced in code, with at least one test. 
+GitHub
+If you want, I can generate a PR patch (as a unified diff) that:
+Adds/updates .gitignore for artifacts,
+Drops in a minimal Control Room FastAPI app + static dist/ stub and hooks it to the CLI,
+Provides a working ci.yml matching your README, and
+Adds a configs/security.yaml plus a small redaction unit test.
