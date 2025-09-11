@@ -46,27 +46,82 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
    export OPENAI_API_KEY="your-api-key-here"
    ```
 
-### Quick Demo
+### Quick Demo - Choose Your Testing Experience
 
-**Option 1: AI-Generated Test (Recommended)**
+The AI WebTester framework includes **two demo applications** to showcase its testing capabilities, from simple to comprehensive scenarios.
+
+#### 🎯 **Option 1: Comprehensive Calendar App Demo (Recommended)**
+
+**What it is**: A full-featured calendar application with user authentication, event management, and complete CRUD operations - perfect for demonstrating real-world testing scenarios.
+
+**Start the Calendar Application**:
 ```bash
-# Let AI create a test plan for you!
-python -m cli.main generate http://127.0.0.1:5000/login --description "Test login functionality"
+# Navigate to the calendar app and start it
+cd examples/calendar_app
+python -m uvicorn main:app --host 0.0.0.0 --port 5000 --reload
 
-# Then run the AI-generated test
+# The app will be available at http://127.0.0.1:5000
+# Demo accounts: admin/admin123, john/password, alice/alice123
+```
+
+**Test the Calendar App** (choose any approach):
+
+**AI-Generated Tests** (Let AI create comprehensive test plans):
+```bash
+# Generate login tests automatically
+python -m cli.main generate http://127.0.0.1:5000/login --description "Test login functionality with security validation"
+
+# Generate calendar navigation tests  
+python -m cli.main generate http://127.0.0.1:5000/calendar --description "Test calendar navigation and event management"
+
+# Run the AI-generated tests with real-time monitoring
 python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --control-room
 ```
 
-**Option 2: Pre-built Demo**  
+**Pre-built Test Suites** (Ready-to-run comprehensive tests):
 ```bash
+# Test login functionality
+python -m cli.main run --plan examples/plan.calendar_login_test.yaml --env examples/env.calendar_login_test.yaml --control-room
+
+# Test calendar navigation  
+python -m cli.main run --plan examples/plan.calendar_navigation_test.yaml --env examples/env.calendar_navigation_test.yaml --control-room
+
+# Test event management (create, edit, delete events)
+python -m cli.main run --plan examples/plan.calendar_add_events_test.yaml --env examples/env.calendar_add_events_test.yaml --control-room
+```
+
+**What you'll see**: Complete testing of login forms, calendar navigation, event creation/editing, user sessions, form validation, and data persistence.
+
+#### 🚀 **Option 2: Simple Mock App Demo (Quick Start)**
+
+**What it is**: A minimal employee management app for basic framework demonstration.
+
+```bash
+# One-command demo that handles everything
 python run_test.py
 ```
 
-This will:
-- Start the demo web application on port 5000
-- Launch the Control Room on port 8788
-- Execute a sample employee creation test
-- Generate artifacts in `artifacts/` directory
+This automatically:
+- Starts the simple mock application on port 5000
+- Launches the Control Room dashboard on port 8788  
+- Executes a basic employee creation test
+- Generates test artifacts in `artifacts/` directory
+
+**What you'll see**: Basic form filling, submission, and result verification in a simple web application.
+
+#### 📊 **Real-time Monitoring**
+
+For both demos, when you use `--control-room`, visit **http://127.0.0.1:8788** to see:
+- Live browser screenshots during test execution
+- Step-by-step progress with success/failure indicators
+- Console logs, network requests, and detailed timing
+- Generated artifacts (videos, traces, screenshots)
+
+#### 🎯 **Which Demo Should You Try?**
+
+- **New to the framework?** Start with **Option 2** (Simple Mock App) for a quick 2-minute overview
+- **Want to see real capabilities?** Use **Option 1** (Calendar App) to experience comprehensive testing scenarios  
+- **Evaluating for your project?** The Calendar App demonstrates real-world complexity your applications might have
 
 ## 🔧 Manual Environment Setup
 
