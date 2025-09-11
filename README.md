@@ -218,19 +218,19 @@ pip install --upgrade pip
 pip install -e ".[dev]"
 
 # Note: pyproject.toml contains the authoritative dependency versions
-# Manual install alternative (use exact versions from pyproject.toml):
-pip install \
-    "playwright>=1.40.0" \
-    "fastapi>=0.104.0" \
-    "uvicorn>=0.24.0" \
-    "openai>=1.3.0" \
-    "typer>=0.9.0" \
-    "jinja2>=3.1.0" \
-    "websockets>=12.0" \
-    "pyyaml>=6.0" \
-    "pydantic>=2.5.0" \
-    "aiofiles>=23.2.0" \
-    "python-multipart>=0.0.6"
+# See pyproject.toml for authoritative versions.
+# Manual install alternative (use compatible ranges):
+uv pip install \
+  "typer[all]>=0.12,<0.15" \
+  "playwright>=1.46,<1.49" \
+  "fastapi>=0.111,<0.116" \
+  "uvicorn[standard]>=0.27,<0.32" \
+  "websockets>=12,<15" \
+  "pyyaml>=6,<7" \
+  "jinja2>=3.1,<3.2" \
+  "beautifulsoup4>=4.12,<4.13" \
+  "aiofiles>=23,<24" \
+  "openai>=1.40,<2"
 
 # Install additional development tools (optional)
 pip install pytest pytest-asyncio

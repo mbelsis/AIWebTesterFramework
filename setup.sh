@@ -88,8 +88,8 @@ install_dependencies() {
         print_status "Installing from pyproject.toml..."
         $PIP_CMD install -e .
     else
-        print_status "Installing individual packages..."
-        $PIP_CMD install playwright fastapi uvicorn typer jinja2 websockets pyyaml pydantic aiofiles python-multipart openai beautifulsoup4
+        print_error "pyproject.toml not found. Please ensure you're in the project root directory."
+        exit 1
     fi
     
     print_success "Python dependencies installed"
