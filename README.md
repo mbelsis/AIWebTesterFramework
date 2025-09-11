@@ -79,6 +79,43 @@ The pipeline validates:
 
 This ensures every release is thoroughly tested and production-ready with enterprise-grade reliability.
 
+### 🔗 **Integrating into Your Projects**
+
+You can easily integrate AI WebTester into your existing GitHub Actions workflows:
+
+```yaml
+# Add to your existing .github/workflows/ci.yml
+- name: Setup AI WebTester
+  run: |
+    git clone https://github.com/your-org/ai-webtester.git
+    cd ai-webtester && pip install -e ".[dev]"
+    playwright install --with-deps chromium
+
+- name: Generate and run AI tests
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  run: |
+    cd ai-webtester
+    python -m cli.main generate http://localhost:3000 --description "Test my app"
+    python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --headless
+
+- name: Upload test artifacts
+  uses: actions/upload-artifact@v4
+  if: always()
+  with:
+    name: test-evidence
+    path: ai-webtester/artifacts/
+```
+
+**See [docs/CI_CD_Pipeline.md](docs/CI_CD_Pipeline.md#integrating-ai-webtester-into-your-github-actions) for comprehensive integration examples including:**
+- 🚀 Basic integration with existing workflows
+- 🔄 Deployment testing and staging validation  
+- 🌐 Multi-environment testing across staging/production
+- 🔀 Automatic PR testing with results commenting
+- 🐳 Docker integration for containerized apps
+- 📊 Performance testing with timing analysis
+- 🔐 Security testing with automated vulnerability detection
+
 ## 🚀 Quick Start
 
 ### Prerequisites

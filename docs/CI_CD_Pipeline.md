@@ -287,3 +287,459 @@ required_status_checks:
 - Documentation maintenance
 
 This CI/CD pipeline ensures every release of the AI WebTester framework is thoroughly validated, secure, and production-ready with enterprise-grade reliability.
+
+## Integrating AI WebTester into Your GitHub Actions
+
+The AI WebTester framework can be seamlessly integrated into your existing GitHub Actions workflows to provide automated testing for your web applications. Below are comprehensive examples for different integration scenarios.
+
+### 🚀 **Basic Integration Example**
+
+Add AI WebTester to your existing workflow:
+
+```yaml
+name: CI with AI WebTester
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Your existing build steps
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Start application
+        run: |
+          npm start &
+          sleep 10
+      
+      # Add AI WebTester integration
+      - name: Setup Python for AI WebTester
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install AI WebTester
+        run: |
+          git clone https://github.com/your-org/ai-webtester.git
+          cd ai-webtester
+          pip install -e ".[dev]"
+          playwright install --with-deps chromium
+      
+      - name: Run AI-powered tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd ai-webtester
+          python -m cli.main generate http://localhost:3000/login --description "Test login functionality"
+          python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --headless
+      
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-evidence
+          path: ai-webtester/artifacts/
+          retention-days: 30
+```
+
+### 🔄 **Deployment Testing Integration**
+
+Test your application after deployment:
+
+```yaml
+name: Deploy and Test
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to staging
+        id: deploy
+        run: |
+          # Your deployment logic here
+          echo "url=https://staging-app.example.com" >> $GITHUB_OUTPUT
+
+  ai-test:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup AI WebTester
+        run: |
+          git clone https://github.com/your-org/ai-webtester.git
+          cd ai-webtester
+          pip install -e ".[dev]"
+          playwright install --with-deps chromium
+      
+      - name: Generate and run tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEPLOYMENT_URL: ${{ needs.deploy.outputs.deployment-url }}
+        run: |
+          cd ai-webtester
+          # Generate comprehensive tests for key user journeys
+          python -m cli.main generate ${DEPLOYMENT_URL}/login --description "Test user authentication flow"
+          python -m cli.main generate ${DEPLOYMENT_URL}/dashboard --description "Test main dashboard functionality"
+          python -m cli.main generate ${DEPLOYMENT_URL}/checkout --description "Test e-commerce checkout process"
+          
+          # Run all generated tests
+          for plan in examples/plan.generated_*.yaml; do
+            python -m cli.main run --plan "$plan" --env "${plan/plan/env}" --headless
+          done
+      
+      - name: Check test results
+        run: |
+          cd ai-webtester
+          # Fail the workflow if any tests failed
+          if find artifacts/ -name "run.json" -exec grep -l '"status": "failed"' {} \; | grep -q .; then
+            echo "❌ Tests failed - check artifacts for details"
+            exit 1
+          else
+            echo "✅ All tests passed successfully"
+          fi
+```
+
+### 🌐 **Multi-Environment Testing**
+
+Test across multiple environments:
+
+```yaml
+name: Multi-Environment Testing
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run nightly at 2 AM
+  workflow_dispatch:
+
+jobs:
+  test-environments:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment:
+          - name: staging
+            url: https://staging.example.com
+          - name: production
+            url: https://app.example.com
+        test-suite:
+          - name: smoke-tests
+            description: "Critical user journeys and basic functionality"
+          - name: regression-tests
+            description: "Comprehensive regression test suite"
+    
+    steps:
+      - name: Setup AI WebTester
+        run: |
+          git clone https://github.com/your-org/ai-webtester.git
+          cd ai-webtester
+          pip install -e ".[dev]"
+          playwright install --with-deps chromium
+      
+      - name: Run ${{ matrix.test-suite.name }} on ${{ matrix.environment.name }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd ai-webtester
+          python -m cli.main generate ${{ matrix.environment.url }} \
+            --description "${{ matrix.test-suite.description }}" \
+            --run-id "${{ matrix.environment.name }}-${{ matrix.test-suite.name }}-$(date +%Y%m%d)"
+          
+          python -m cli.main run \
+            --plan examples/plan.generated_*.yaml \
+            --env examples/env.generated_*.yaml \
+            --headless \
+            --control-room-port 0  # Auto-allocate port
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.environment.name }}-${{ matrix.test-suite.name }}-artifacts
+          path: ai-webtester/artifacts/
+```
+
+### 🔀 **Pull Request Testing**
+
+Automatically test pull requests:
+
+```yaml
+name: PR Testing
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  preview-deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      preview-url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy PR preview
+        id: deploy
+        run: |
+          # Deploy PR to preview environment
+          echo "url=https://pr-${{ github.event.number }}.preview.example.com" >> $GITHUB_OUTPUT
+
+  ai-testing:
+    needs: preview-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup AI WebTester
+        run: |
+          git clone https://github.com/your-org/ai-webtester.git
+          cd ai-webtester
+          pip install -e ".[dev]"
+          playwright install --with-deps chromium
+      
+      - name: Test PR changes
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PR_URL: ${{ needs.preview-deploy.outputs.preview-url }}
+        run: |
+          cd ai-webtester
+          # Generate tests specific to the PR
+          python -m cli.main generate ${PR_URL} \
+            --description "Test changes in PR #${{ github.event.number }}" \
+            --run-id "pr-${{ github.event.number }}"
+          
+          python -m cli.main run \
+            --plan examples/plan.generated_*.yaml \
+            --env examples/env.generated_*.yaml \
+            --headless
+      
+      - name: Comment PR with results
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'ai-webtester/artifacts';
+            
+            // Check test results
+            const runFiles = fs.readdirSync(path, { recursive: true })
+              .filter(file => file.endsWith('run.json'));
+            
+            let results = '## 🤖 AI WebTester Results\n\n';
+            let hasFailures = false;
+            
+            for (const file of runFiles) {
+              const content = JSON.parse(fs.readFileSync(`${path}/${file}`, 'utf8'));
+              const status = content.status === 'passed' ? '✅' : '❌';
+              if (content.status === 'failed') hasFailures = true;
+              
+              results += `${status} **${content.plan_name}**: ${content.status}\n`;
+              results += `   Duration: ${content.duration_seconds}s\n`;
+            }
+            
+            results += `\n[View detailed artifacts](${context.payload.pull_request.html_url}/checks)`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: results
+            });
+            
+            if (hasFailures) {
+              core.setFailed('Some tests failed - check artifacts for details');
+            }
+```
+
+### 🐳 **Docker Integration**
+
+Use AI WebTester in containerized environments:
+
+```yaml
+name: Docker Testing
+on: [push]
+
+jobs:
+  test-with-docker:
+    runs-on: ubuntu-latest
+    services:
+      app:
+        image: your-app:latest
+        ports:
+          - 3000:3000
+        options: --health-cmd="curl -f http://localhost:3000/health" --health-interval=10s
+    
+    steps:
+      - name: Run AI WebTester in container
+        run: |
+          docker run --rm \
+            --network host \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -v $(pwd)/artifacts:/artifacts \
+            your-org/ai-webtester:latest \
+            generate http://localhost:3000 --description "Docker integration test"
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-test-artifacts
+          path: artifacts/
+```
+
+### 📊 **Performance Testing Integration**
+
+Combine with performance monitoring:
+
+```yaml
+name: Performance and Functional Testing
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup AI WebTester
+        run: |
+          git clone https://github.com/your-org/ai-webtester.git
+          cd ai-webtester
+          pip install -e ".[dev]"
+          playwright install --with-deps chromium
+      
+      - name: Run comprehensive tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd ai-webtester
+          # Generate performance-focused tests
+          python -m cli.main generate https://app.example.com \
+            --description "Performance and functional validation with timing analysis"
+          
+          # Run with timing measurements
+          python -m cli.main run \
+            --plan examples/plan.generated_*.yaml \
+            --env examples/env.generated_*.yaml \
+            --headless
+      
+      - name: Analyze performance metrics
+        run: |
+          cd ai-webtester
+          # Extract timing data from test results
+          for run_file in artifacts/*/run.json; do
+            duration=$(jq -r '.duration_seconds' "$run_file")
+            if (( $(echo "$duration > 60" | bc -l) )); then
+              echo "⚠️ Performance concern: Test took ${duration}s"
+            fi
+          done
+```
+
+### 🔐 **Security Testing Integration**
+
+Automated security testing:
+
+```yaml
+name: Security Testing
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  security-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup AI WebTester
+        run: |
+          git clone https://github.com/your-org/ai-webtester.git
+          cd ai-webtester
+          pip install -e ".[dev]"
+          playwright install --with-deps chromium
+      
+      - name: Run security-focused tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd ai-webtester
+          # Generate security-specific test scenarios
+          python -m cli.main generate https://app.example.com/login \
+            --description "Security testing including XSS, CSRF, and injection attacks"
+          
+          python -m cli.main generate https://app.example.com/admin \
+            --description "Administrative interface security validation"
+          
+          # Run with security redaction enabled
+          python -m cli.main run \
+            --plan examples/plan.generated_*.yaml \
+            --env examples/env.generated_*.yaml \
+            --headless
+      
+      - name: Security analysis
+        run: |
+          cd ai-webtester
+          # Check for security issues in test results
+          if grep -r "XSS\|injection\|CSRF" artifacts/*/events.json; then
+            echo "🔒 Security tests completed - review artifacts for findings"
+          fi
+```
+
+## Integration Best Practices
+
+### 🎯 **Secret Management**
+```yaml
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  # Add other secrets as needed
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+### 📁 **Artifact Organization**
+```yaml
+- name: Upload test artifacts
+  uses: actions/upload-artifact@v4
+  if: always()
+  with:
+    name: ai-webtester-${{ github.run_id }}
+    path: |
+      ai-webtester/artifacts/
+      ai-webtester/configs/
+    retention-days: 30
+```
+
+### 🔄 **Conditional Testing**
+```yaml
+- name: Run AI tests
+  if: contains(github.event.head_commit.message, '[test]') || github.event_name == 'schedule'
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  run: |
+    # Your AI WebTester commands here
+```
+
+### 📈 **Status Reporting**
+```yaml
+- name: Report test status
+  run: |
+    cd ai-webtester
+    echo "## 🤖 AI WebTester Summary" >> $GITHUB_STEP_SUMMARY
+    echo "| Test Plan | Status | Duration |" >> $GITHUB_STEP_SUMMARY
+    echo "|-----------|--------|----------|" >> $GITHUB_STEP_SUMMARY
+    
+    for run_file in artifacts/*/run.json; do
+      name=$(jq -r '.plan_name' "$run_file")
+      status=$(jq -r '.status' "$run_file")
+      duration=$(jq -r '.duration_seconds' "$run_file")
+      echo "| $name | $status | ${duration}s |" >> $GITHUB_STEP_SUMMARY
+    done
+```
+
+These examples demonstrate how to seamlessly integrate AI WebTester into your existing CI/CD workflows for automated, intelligent web application testing.
