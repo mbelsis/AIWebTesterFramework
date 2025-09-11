@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "title": "Team Meeting",
+    "description": "Weekly team standup and project updates",
+    "date": "2025-09-15",
+    "time": "10:00",
+    "created_at": "2025-09-11T12:00:00"
+  },
+  {
+    "id": 2,
+    "user_id": 1,
+    "title": "Lunch with Client",
+    "description": "Business lunch at downtown restaurant",
+    "date": "2025-09-18",
+    "time": "12:30",
+    "created_at": "2025-09-11T12:15:00"
+  },
+  {
+    "id": 3,
+    "user_id": 2,
+    "title": "Doctor Appointment",
+    "description": "Annual health checkup",
+    "date": "2025-09-20",
+    "time": "14:00",
+    "created_at": "2025-09-11T12:30:00"
+  },
+  {
+    "id": 4,
+    "user_id": 2,
+    "title": "Birthday Party",
+    "description": "Sarah's birthday celebration",
+    "date": "2025-09-25",
+    "time": "18:00",
+    "created_at": "2025-09-11T12:45:00"
+  },
+  {
+    "id": 5,
+    "user_id": 3,
+    "title": "Conference Call",
+    "description": "Quarterly business review meeting",
+    "date": "2025-09-12",
+    "time": "09:00",
+    "created_at": "2025-09-11T13:00:00"
+  }
+]

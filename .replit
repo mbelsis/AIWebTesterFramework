@@ -17,20 +17,24 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Mock App Server"
+args = "Calendar App"
 
 [[workflows.workflow]]
-name = "Mock App Server"
+name = "Calendar App"
 author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd calendar_app && python -m uvicorn main:app --host 0.0.0.0 --port 5000 --reload"
+waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python -m uvicorn mock_app.app:app --host 0.0.0.0 --port 5000 --reload"
-waitForPort = 5000
-
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 45849
+externalPort = 3000

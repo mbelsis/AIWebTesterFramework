@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar App - Login</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <h1>Calendar Login</h1>
+            <form action="/login" method="post" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                {% if error %}
+                <div class="error-message">{{ error }}</div>
+                {% endif %}
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+            <div class="demo-credentials">
+                <h3>Demo Accounts:</h3>
+                <p><strong>Admin:</strong> admin / admin123</p>
+                <p><strong>User:</strong> john / password</p>
+                <p><strong>User:</strong> alice / alice123</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
