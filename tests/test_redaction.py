@@ -245,16 +245,16 @@ class TestRedactionPatterns:
     def test_stripe_api_keys(self):
         """Test Stripe API key redaction."""
         test_cases = [
-            ("sk_test_1234567890abcdefghijklmnopqrstuvwxyz", "[REDACTED_STRIPE_KEY]"),
-            ("pk_live_abcdefghijklmnopqrstuvwxyz1234567890", "[REDACTED_STRIPE_KEY]"),
-            ("sk_live_1234567890abcdefghijklmnopqrstuvwxyz", "[REDACTED_STRIPE_KEY]"),
-            ("pk_test_abcdefghijklmnopqrstuvwxyz1234567890", "[REDACTED_STRIPE_KEY]"),
+            ("sk_test_fakekeyfakekeyfakekey12345", "[REDACTED_STRIPE_KEY]"),
+            ("pk_live_fakekeyfakekeyfakekey67890", "[REDACTED_STRIPE_KEY]"),
+            ("sk_live_fakekeyfakekeyfakekey11111", "[REDACTED_STRIPE_KEY]"),
+            ("pk_test_fakekeyfakekeyfakekey22222", "[REDACTED_STRIPE_KEY]"),
         ]
         
         for original, expected in test_cases:
             result = self.redactor.redact_text(original)
             assert "[REDACTED_STRIPE_KEY]" in result
-            assert "sk_test_1234567890abcdefghijklmnopqrstuvwxyz" not in result
+            assert "sk_test_fakekeyfakekeyfakekey12345" not in result
     
     def test_jwt_tokens(self):
         """Test JWT token redaction."""
