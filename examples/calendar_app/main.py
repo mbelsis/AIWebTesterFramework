@@ -129,7 +129,13 @@ async def login(request: Request, username: str = Form(...), password: str = For
     
     # Set cookie and redirect
     response = RedirectResponse(url="/calendar", status_code=302)
-    response.set_cookie(key="session_id", value=session_id, httponly=True)
+    response.set_cookie(
+        key="session_id", 
+        value=session_id, 
+        httponly=True,
+        secure=False,  # Allow HTTP in development
+        samesite="lax"  # Allow cross-origin in iframe
+    )
     return response
 
 @app.get("/logout")
