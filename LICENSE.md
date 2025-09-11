@@ -8,7 +8,9 @@
 
 ### Non-Commercial License
 
-This software is provided **"as is"** without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. **The creator accepts no responsibility for any financial losses, business damages, or other consequences that may result from issues, bugs, vulnerabilities, or problems in applications under test that this software fails to detect or identify. Users acknowledge that this testing tool may not discover all potential issues and use it at their own risk.**
+This software is provided **"as is"** without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. 
+
+The creator accepts no responsibility for any financial losses, business damages, or other consequences that may result from issues, bugs, vulnerabilities, or problems in applications under test that this software fails to detect or identify. Users acknowledge that this testing tool may not discover all potential issues and use it at their own risk.
 
 ### Permitted Use
 
