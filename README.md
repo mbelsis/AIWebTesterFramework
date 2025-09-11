@@ -219,7 +219,8 @@ pip install -e ".[dev]"
 
 # Note: pyproject.toml contains the authoritative dependency versions
 # See pyproject.toml for authoritative versions.
-# Manual install alternative (use compatible ranges):
+# Manual install alternative (all dependencies from pyproject.toml):
+# Option 1: Using uv (fast package installer - install with: pip install uv)
 uv pip install \
   "typer[all]>=0.12,<0.15" \
   "playwright>=1.46,<1.49" \
@@ -230,10 +231,30 @@ uv pip install \
   "jinja2>=3.1,<3.2" \
   "beautifulsoup4>=4.12,<4.13" \
   "aiofiles>=23,<24" \
-  "openai>=1.40,<2"
+  "openai>=1.40,<2" \
+  "pydantic>=2.5,<3" \
+  "python-multipart>=0.0.6,<1"
 
-# Install additional development tools (optional)
-pip install pytest pytest-asyncio
+# Option 2: Using standard pip (same dependencies)
+pip install \
+  "typer[all]>=0.12,<0.15" \
+  "playwright>=1.46,<1.49" \
+  "fastapi>=0.111,<0.116" \
+  "uvicorn[standard]>=0.27,<0.32" \
+  "websockets>=12,<15" \
+  "pyyaml>=6,<7" \
+  "jinja2>=3.1,<3.2" \
+  "beautifulsoup4>=4.12,<4.13" \
+  "aiofiles>=23,<24" \
+  "openai>=1.40,<2" \
+  "pydantic>=2.5,<3" \
+  "python-multipart>=0.0.6,<1"
+
+# Install with development dependencies (recommended)
+pip install -e ".[dev]"
+
+# Or install runtime-only dependencies
+pip install -e .
 ```
 
 ### Step 4: Install Browser Dependencies
@@ -318,8 +339,9 @@ sudo apt-get install [missing-package-names]
 # Make sure virtual environment is activated
 source ai-webtester-env/bin/activate
 
-# Reinstall dependencies
-pip install --force-reinstall -r requirements.txt
+# Reinstall dependencies from pyproject.toml
+pip install --force-reinstall -e ".[dev]"
+playwright install
 ```
 
 **Issue: OpenAI API errors**
