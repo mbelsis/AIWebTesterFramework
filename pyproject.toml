@@ -26,6 +26,7 @@ dependencies = [
     "faker>=37.6.0",
     "pytest>=7.4.4",
     "pytest-asyncio>=0.23.8",
+    "requests>=2.32.5",
 ]
 
 [project.optional-dependencies]
