@@ -55,17 +55,28 @@ def generate(
     description: str = typer.Option("", help="Description of what to test"),
     output_dir: Path = typer.Option(Path("examples"), help="Output directory for generated files"),
     headful: bool = typer.Option(False, help="Show browser during analysis"),
-    interactive: bool = typer.Option(False, help="Interactive mode with prompts")
+    interactive: bool = typer.Option(False, help="Interactive mode with prompts"),
+    run_id: str = typer.Option("", help="Specific run ID for seeded data generation")
 ):
-    """Generate test plan from URL using AI analysis."""
+    """Generate test plan from URL using AI analysis with seeded data generation."""
     async def _generate():
         from orchestrator.test_plan_generator import TestPlanGenerator
-        generator = TestPlanGenerator()
+        
+        # Generate run_id if not provided
+        if not run_id:
+            import hashlib
+            timestamp = int(time.time() * 1000)
+            hash_obj = hashlib.md5(str(timestamp).encode())
+            generated_run_id = f"gen_{timestamp}_{hash_obj.hexdigest()[:8]}"
+        else:
+            generated_run_id = run_id
+        
+        print(f"🔍 Analyzing {url} (Run ID: {generated_run_id})...")
+        generator = TestPlanGenerator(run_id=generated_run_id)
         
         if interactive:
             result = await generator.interactive_generate(url)
         else:
-            print(f"🔍 Analyzing {url}...")
             result = await generator.generate_from_url(
                 url=url,
                 test_description=description, 
@@ -75,6 +86,7 @@ def generate(
             
             print(f"✅ Generated test plan: {result['plan_file']}")
             print(f"✅ Generated environment: {result['env_file']}")
+            print(f"🌱 Seeded data generation using Run ID: {generated_run_id}")
             print(f"\n🏃 Run your test:")
             print(f"python -m cli.main run --plan {result['plan_file']} --env {result['env_file']} --control-room")
     

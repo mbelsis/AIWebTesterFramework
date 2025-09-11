@@ -22,7 +22,8 @@ dependencies = [
     "openai>=1.40,<2",
     "pydantic>=2.5,<3",
     "python-multipart>=0.0.6,<1",
-    "backoff>=2.2,<3"
+    "backoff>=2.2,<3",
+    "faker>=37.6.0",
 ]
 
 [project.optional-dependencies]

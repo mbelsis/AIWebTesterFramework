@@ -1,13 +1,17 @@
 import asyncio
 import yaml
 import json
+import time
+import hashlib
 from pathlib import Path
 from typing import Dict, Any, Optional
 from orchestrator.page_analyzer import PageAnalyzer
+from data_gen.faker_util import get_run_specific_faker
 
 class TestPlanGenerator:
-    def __init__(self, openai_api_key: Optional[str] = None):
+    def __init__(self, openai_api_key: Optional[str] = None, run_id: Optional[str] = None):
         self.analyzer = PageAnalyzer(openai_api_key)
+        self.run_id = run_id or self._generate_run_id()
 
     async def generate_from_url(
         self, 
@@ -30,7 +34,7 @@ class TestPlanGenerator:
         print("🤖 Generating test plan with AI...")
         test_plan = await self.analyzer.generate_test_plan(page_analysis, test_description)
         
-        # Generate environment config
+        # Generate environment config with seeded data
         env_config = self._generate_environment_config(url, page_analysis)
         
         # Save files
@@ -46,23 +50,28 @@ class TestPlanGenerator:
         }
 
     def _generate_environment_config(self, url: str, page_analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate environment configuration based on page analysis"""
+        """Generate environment configuration with seeded Faker data"""
         
         from urllib.parse import urlparse
         parsed_url = urlparse(url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         
+        # Get seeded faker instance for consistent data generation
+        faker = get_run_specific_faker(self.run_id)
+        user_profile = faker.user_profile()
+        
         env_config = {
             "name": f"Generated Environment for {page_analysis['title']}",
             "description": f"Auto-generated environment configuration for {page_analysis['structure']['page_type']} page",
+            "run_id": self.run_id,
             "target": {
                 "base_url": base_url,
                 "timeout": 15000
             },
             "credentials": {
-                "username": "test_user",
-                "password": "test_password",
-                "email": "test@example.com"
+                "username": user_profile['username'],
+                "password": "TestPass123!",
+                "email": user_profile['email']
             },
             "settings": {
                 "headful": True,
@@ -72,45 +81,102 @@ class TestPlanGenerator:
             }
         }
         
-        # Add page-specific configurations
+        # Add page-specific configurations with seeded data
         page_type = page_analysis["structure"]["page_type"]
         
         if page_type == "login":
+            # Generate valid and invalid user profiles
+            valid_user = faker.user_profile()
             env_config["test_data"] = {
                 "valid_credentials": {
-                    "username": "valid_user",
-                    "password": "valid_password"
+                    "username": valid_user['username'],
+                    "password": "TestPass123!",
+                    "email": valid_user['email']
                 },
                 "invalid_credentials": {
-                    "username": "invalid_user",
-                    "password": "wrong_password"
+                    "username": f"invalid_{faker.get_run_id_suffix()}",
+                    "password": "wrong_password",
+                    "email": f"invalid+{faker.get_run_id_suffix()}@example.com"
                 }
             }
         elif page_type == "registration":
+            user_data = faker.user_profile()
             env_config["test_data"] = {
                 "user_data": {
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "email": "john.doe.test@example.com",
-                    "password": "SecurePass123!",
-                    "phone": "555-0123"
+                    "first_name": user_data['first_name'],
+                    "last_name": user_data['last_name'],
+                    "full_name": user_data['full_name'],
+                    "username": user_data['username'],
+                    "email": user_data['email'],
+                    "password": "TestPass123!",
+                    "confirm_password": "TestPass123!",
+                    "phone": user_data['phone'],
+                    "date_of_birth": user_data['date_of_birth'],
+                    "job_title": user_data['job_title'],
+                    "company": user_data['company']
                 }
             }
         elif page_type == "checkout":
+            payment_data = faker.payment_data()
+            address_data = faker.address_data()
+            user_data = faker.user_profile()
+            
             env_config["test_data"] = {
                 "payment_info": {
-                    "card_number": "4111111111111111",
-                    "expiry": "12/25",
-                    "cvv": "123",
-                    "name": "John Doe"
+                    "card_number": payment_data['card_number'],
+                    "card_type": payment_data['card_type'],
+                    "expiry": f"{payment_data['expiry_month']}/{payment_data['expiry_year'][-2:]}",
+                    "expiry_month": payment_data['expiry_month'],
+                    "expiry_year": payment_data['expiry_year'],
+                    "cvv": payment_data['cvv'],
+                    "cardholder_name": payment_data['cardholder_name']
+                },
+                "billing_address": {
+                    "first_name": user_data['first_name'],
+                    "last_name": user_data['last_name'],
+                    "street_address": address_data['street_address'],
+                    "city": address_data['city'],
+                    "state": address_data['state'],
+                    "state_abbr": address_data['state_abbr'],
+                    "postal_code": address_data['postal_code'],
+                    "country": address_data['country'],
+                    "phone": user_data['phone']
                 },
                 "shipping_address": {
-                    "street": "123 Main St",
-                    "city": "Anytown",
-                    "state": "CA",
-                    "zip": "12345"
+                    "first_name": user_data['first_name'],
+                    "last_name": user_data['last_name'],
+                    "street_address": address_data['street_address'],
+                    "city": address_data['city'],
+                    "state": address_data['state'],
+                    "state_abbr": address_data['state_abbr'],
+                    "postal_code": address_data['postal_code'],
+                    "country": address_data['country'],
+                    "phone": user_data['phone']
                 }
             }
+        elif page_type == "contact":
+            contact_data = faker.user_profile()
+            business_data = faker.business_data()
+            
+            env_config["test_data"] = {
+                "contact_info": {
+                    "name": contact_data['full_name'],
+                    "email": contact_data['email'],
+                    "phone": contact_data['phone'],
+                    "company": business_data['company_name'],
+                    "subject": "Test inquiry from automated testing",
+                    "message": "This is a test message generated for automated testing purposes."
+                }
+            }
+        
+        # Add form data for generic form fields
+        if page_analysis.get('structure', {}).get('forms'):
+            form_fields = []
+            for form in page_analysis['structure']['forms']:
+                form_fields.extend([field['name'] for field in form.get('fields', [])])
+            
+            if form_fields:
+                env_config["form_data"] = faker.form_data(form_fields)
         
         return env_config
 
@@ -152,6 +218,13 @@ class TestPlanGenerator:
         safe = re.sub(r'[^\w\s-]', '', filename)
         safe = re.sub(r'[\s_]+', '_', safe)
         return safe.lower()[:50]  # Limit length
+
+    def _generate_run_id(self) -> str:
+        """Generate a unique run ID for seeding purposes."""
+        timestamp = int(time.time() * 1000)  # milliseconds
+        # Create a hash from timestamp for better distribution
+        hash_obj = hashlib.md5(str(timestamp).encode())
+        return f"gen_{timestamp}_{hash_obj.hexdigest()[:8]}"
 
     async def interactive_generate(self, url: str) -> Dict[str, Any]:
         """Interactive test plan generation with user prompts"""
