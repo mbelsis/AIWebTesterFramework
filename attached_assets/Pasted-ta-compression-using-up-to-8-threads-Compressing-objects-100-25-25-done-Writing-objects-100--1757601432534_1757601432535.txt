@@ -1,0 +1,45 @@
+ta compression using up to 8 threads
+Compressing objects: 100% (25/25), done.
+Writing objects: 100% (31/31), 17.33 KiB | 5.78 MiB/s, done.
+Total 31 (delta 20), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (20/20), completed with 9 local objects.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:     
+remote:       —— Stripe API Key ————————————————————————————————————
+remote:        locations:
+remote:          - commit: beac7052ac91421b8480a22e6cc1aeabbb232645
+remote:            path: tests/test_redaction.py:250
+remote:          - commit: a1655f1622029b7f6aae5a02818c0bbbcd11a809
+remote:            path: tests/test_redaction.py:250
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/mbelsis/AIWebTesterFramework/security/secret-scanning/unblock-secret/32YbiFqhKoCkrlPXQb5Gj1gNXz8
+remote:     
+remote:     
+remote:       —— Stripe API Key ————————————————————————————————————
+remote:        locations:
+remote:          - commit: 837988b3acee414d63defd48525f82e768cccea1
+remote:            path: tests/test_redaction.py:250
+remote:          - commit: 68e0af64390fce2af376f7653604b19740b4d929
+remote:            path: tests/test_redaction.py:250
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/mbelsis/AIWebTesterFramework/security/secret-scanning/unblock-secret/32YcmS1DMw2AFP3YiuwDmd9HN4o
+remote:     
+remote: 
+remote: 
+To https://github.com/mbelsis/AIWebTesterFramework
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/mbelsis/AIWebTesterFramework'
+~/workspace$ 
