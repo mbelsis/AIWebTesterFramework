@@ -158,21 +158,24 @@ source ai-webtester-env/bin/activate  # Linux/macOS
 ```bash
 # Make sure you're in the project directory and virtual environment is activated
 
-# Install core dependencies
+# Install dependencies (recommended method)
 pip install --upgrade pip
-pip install \
-    "typer[all]>=0.12,<1.0" \
-    "playwright>=1.46,<2.0" \
-    "fastapi>=0.110,<1.0" \
-    "uvicorn[standard]>=0.24,<1.0" \
-    "websockets>=12.0,<13.0" \
-    "pyyaml>=6.0,<7.0" \
-    "jinja2>=3.1,<4.0" \
-    "beautifulsoup4>=4.12,<5.0" \
-    "aiofiles>=23.2,<24.0" \
-    "openai>=1.40,<2.0"
+pip install -e ".[dev]"
 
-# Note: See pyproject.toml for authoritative dependency versions
+# Note: pyproject.toml contains the authoritative dependency versions
+# Manual install alternative (use exact versions from pyproject.toml):
+pip install \
+    "playwright>=1.40.0" \
+    "fastapi>=0.104.0" \
+    "uvicorn>=0.24.0" \
+    "openai>=1.3.0" \
+    "typer>=0.9.0" \
+    "jinja2>=3.1.0" \
+    "websockets>=12.0" \
+    "pyyaml>=6.0" \
+    "pydantic>=2.5.0" \
+    "aiofiles>=23.2.0" \
+    "python-multipart>=0.0.6"
 
 # Install additional development tools (optional)
 pip install pytest pytest-asyncio

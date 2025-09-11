@@ -1,0 +1,74 @@
+name: CI
+
+on: 
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Install system dependencies
+        run: |
+          # System dependencies are handled by playwright install --with-deps
+          echo "System dependencies will be installed by Playwright"
+            
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip uv
+          uv pip install --system -e ".[dev]"
+          
+      - name: Install Playwright browsers
+        run: |
+          python -m playwright install --with-deps chromium
+          
+      - name: Run linting and type checks
+        run: |
+          python -m black --check .
+          # python -m mypy .  # Enable when mypy is configured
+          
+      - name: Start mock application
+        run: |
+          python -m cli.main mock-app &
+          sleep 10
+          curl -f http://127.0.0.1:5000/login || exit 1
+          
+      - name: Run smoke test
+        if: ${{ secrets.OPENAI_API_KEY != '' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python -m cli.main run \
+            --plan examples/plan.demo_create_employee.yaml \
+            --env examples/env.local.yaml \
+            --headful false \
+            --artifacts-dir ./test-artifacts
+            
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-artifacts-${{ matrix.python-version }}
+          path: test-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+          
+      - name: Check for test failures
+        if: failure()
+        run: |
+          echo "Tests failed. Check artifacts for details."
+          ls -la test-artifacts/ || true

@@ -23,18 +23,14 @@ args = "Calendar App"
 name = "Calendar App"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd calendar_app && python -m uvicorn main:app --host 0.0.0.0 --port 5000 --reload"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd examples/calendar_app && python -m uvicorn main:app --host 0.0.0.0 --port 5000 --reload"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 40333
-externalPort = 3000
