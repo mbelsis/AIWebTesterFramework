@@ -1,0 +1,79 @@
+name: "Demo Employee Creation Test"
+description: "Test the employee creation flow in the demo application"
+
+steps:
+  - title: "Navigate to login page"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/login"
+
+  - title: "Enter username"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "testuser"
+
+  - title: "Enter password"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "testpass"
+
+  - title: "Enter domain"
+    action: "fill"
+    target: "#domain"
+    data:
+      value: "demo.local"
+
+  - title: "Click login button"
+    action: "submit"
+    target: "button[type='submit']"
+
+  - title: "Wait for redirect to employee form"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Verify on employee creation page"
+    action: "verify"
+    verification:
+      text: "Create New Employee"
+
+  - title: "Fill first name"
+    action: "fill"
+    target: "#first_name"
+    data:
+      value: "John"
+
+  - title: "Fill last name"
+    action: "fill"
+    target: "#last_name"
+    data:
+      value: "Doe"
+
+  - title: "Fill email"
+    action: "fill"
+    target: "#email"
+    data:
+      value: "john.doe@example.com"
+
+  - title: "Select role"
+    action: "click"
+    target: "#role"
+
+  - title: "Select Developer role"
+    action: "click"
+    target: "option[value='Developer']"
+
+  - title: "Submit employee form"
+    action: "submit"
+    target: "button[type='submit']"
+
+  - title: "Wait for success message"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Verify employee created"
+    action: "verify"
+    verification:
+      text: "Employee John Doe created successfully"
