@@ -1,0 +1,170 @@
+name: "Calendar App - UI Navigation Test"  
+description: "Test calendar interface navigation, month browsing, and UI element interactions"
+
+steps:
+  # Setup: Login first
+  - title: "Navigate to calendar app"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/"
+
+  - title: "Login with admin account"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "admin"
+
+  - title: "Enter admin password"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "admin123"
+
+  - title: "Submit login"
+    action: "click"
+    target: ".login-btn"
+
+  - title: "Verify calendar page loaded"
+    action: "verify"
+    verification:
+      text: "My Calendar"
+
+  # Test Calendar Navigation
+  - title: "Verify current month is displayed"
+    action: "verify"
+    verification:
+      selector: "#currentMonth"
+
+  - title: "Verify calendar grid is present"
+    action: "verify"
+    verification:
+      selector: "#calendarGrid"
+
+  - title: "Verify navigation buttons are present"
+    action: "verify"
+    verification:
+      selector: "#prevMonth"
+
+  - title: "Verify next month button is present"
+    action: "verify"
+    verification:
+      selector: "#nextMonth"
+
+  # Test Month Navigation
+  - title: "Click next month button"
+    action: "click"
+    target: "#nextMonth"
+
+  - title: "Wait for calendar to update"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Verify month navigation updated (check October or November appears)"
+    action: "verify"
+    verification:
+      text: "October"
+
+  - title: "Click previous month button twice"
+    action: "click"
+    target: "#prevMonth"
+
+  - title: "Wait for navigation"
+    action: "wait" 
+    data:
+      seconds: 1
+
+  - title: "Click previous month again"
+    action: "click"
+    target: "#prevMonth"
+
+  - title: "Wait for navigation"
+    action: "wait"
+    data:
+      seconds: 1
+
+  - title: "Return to current month"
+    action: "click"
+    target: "#nextMonth"
+
+  # Test Calendar Day Headers
+  - title: "Verify Sunday header"
+    action: "verify"
+    verification:
+      text: "Sun"
+
+  - title: "Verify Monday header"
+    action: "verify"
+    verification:
+      text: "Mon"
+
+  - title: "Verify complete week headers"
+    action: "verify"
+    verification:
+      text: "Sat"
+
+  # Test Events Section
+  - title: "Verify upcoming events section"
+    action: "verify"
+    verification:
+      text: "Upcoming Events"
+
+  - title: "Verify events list container"
+    action: "verify"
+    verification:
+      selector: "#eventsList"
+
+  # Test User Interface Elements
+  - title: "Verify user welcome message"
+    action: "verify"
+    verification:
+      text: "Welcome, Administrator"
+
+  - title: "Verify logout button is present"
+    action: "verify"
+    verification:
+      selector: ".logout-btn"
+
+  # Test Calendar Day Interaction (Click on a day)
+  - title: "Click on a calendar day to test interaction"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal or interaction"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Verify event modal appeared and is visible"
+    action: "verify"
+    verification:
+      selector: "#eventModal[style*='display: block']"
+
+  - title: "Verify modal title"
+    action: "verify"
+    verification:
+      text: "Add Event"
+
+  - title: "Close modal by clicking close button"
+    action: "click"
+    target: ".close"
+
+  - title: "Verify modal closed after close button click"
+    action: "verify"
+    verification:
+      selector: "#eventModal[style*='display: none']"
+
+  # Test Responsive Elements
+  - title: "Verify calendar controls are functional"
+    action: "verify"
+    verification:
+      selector: ".calendar-controls"
+
+  # Final Verification
+  - title: "Verify calendar grid is still functional after navigation"
+    action: "verify"
+    verification:
+      selector: "#calendarGrid"
+
+  - title: "Logout to clean up session"
+    action: "click"
+    target: ".logout-btn"

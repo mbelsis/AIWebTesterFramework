@@ -1,0 +1,184 @@
+name: "Calendar App - Login Functionality Test"
+description: "Comprehensive test for calendar application login system with valid/invalid credentials and edge cases"
+
+steps:
+  # Test 1: Valid Login with Admin Credentials
+  - title: "Navigate to calendar application"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/"
+
+  - title: "Verify redirect to login page"
+    action: "verify"
+    verification:
+      text: "Calendar Login"
+
+  - title: "Verify demo credentials are displayed"
+    action: "verify"
+    verification:
+      text: "Demo Accounts:"
+
+  - title: "Fill username with admin credentials"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "admin"
+
+  - title: "Fill password with admin credentials"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "admin123"
+
+  - title: "Submit login form"
+    action: "submit"
+    target: ".login-btn"
+
+  - title: "Verify successful login redirect to calendar"
+    action: "verify"
+    verification:
+      text: "Welcome, Administrator"
+
+  - title: "Verify calendar interface is loaded"
+    action: "verify"
+    verification:
+      selector: "#calendarGrid"
+
+  - title: "Logout to reset session"
+    action: "click"
+    target: ".logout-btn"
+
+  # Test 2: Valid Login with Regular User
+  - title: "Navigate to login page after logout"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/login"
+
+  - title: "Fill username with john credentials"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "john"
+
+  - title: "Fill password with john credentials"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "password"
+
+  - title: "Submit login form"
+    action: "click"
+    target: ".login-btn"
+
+  - title: "Verify successful login with john account"
+    action: "verify"
+    verification:
+      text: "Welcome, John Doe"
+
+  - title: "Logout john's session"
+    action: "click"
+    target: ".logout-btn"
+
+  # Test 3: Invalid Login - Wrong Password
+  - title: "Navigate to login page for invalid test"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/login"
+
+  - title: "Fill username with valid user"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "admin"
+
+  - title: "Fill password with invalid password"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "wrongpassword"
+
+  - title: "Submit invalid login form"
+    action: "click"
+    target: ".login-btn"
+
+  - title: "Verify error message is displayed"
+    action: "verify"
+    verification:
+      selector: ".error-message"
+
+  - title: "Verify still on login page"
+    action: "verify"
+    verification:
+      text: "Calendar Login"
+
+  # Test 4: Invalid Login - Non-existent User
+  - title: "Clear username field"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "nonexistentuser"
+
+  - title: "Clear password field"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "anypassword"
+
+  - title: "Submit invalid user login"
+    action: "click"
+    target: ".login-btn"
+
+  - title: "Verify error message for invalid user"
+    action: "verify"
+    verification:
+      selector: ".error-message"
+
+  # Test 5: Empty Form Validation
+  - title: "Clear both fields and test empty submission"
+    action: "fill"
+    target: "#username"
+    data:
+      value: ""
+
+  - title: "Clear password field"
+    action: "fill"
+    target: "#password"
+    data:
+      value: ""
+
+  - title: "Attempt empty form submission"
+    action: "click"
+    target: ".login-btn"
+
+  - title: "Verify HTML5 validation prevents submission"
+    action: "verify"
+    verification:
+      selector: "#username:invalid"
+
+  # Test 6: Alice User Login (Third Test Account)
+  - title: "Test alice account login"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "alice"
+
+  - title: "Fill alice password"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "alice123"
+
+  - title: "Submit alice login"
+    action: "click"
+    target: ".login-btn"
+
+  - title: "Verify alice successful login"
+    action: "verify"
+    verification:
+      text: "Welcome, Alice Smith"
+
+  - title: "Verify calendar loads for alice"
+    action: "verify"
+    verification:
+      selector: "#calendarGrid"
+
+  - title: "Final logout"
+    action: "click"
+    target: ".logout-btn"

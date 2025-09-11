@@ -1,0 +1,388 @@
+name: "Calendar App - Add Events Test"
+description: "Comprehensive test for adding, editing, and managing calendar events"
+
+steps:
+  # Setup: Login first
+  - title: "Navigate to calendar app"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/"
+
+  - title: "Login with john account"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "john"
+
+  - title: "Enter john password"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "password"
+
+  - title: "Submit login"
+    action: "click"
+    target: ".login-btn"
+
+  - title: "Verify calendar loaded for john"
+    action: "verify"
+    verification:
+      text: "Welcome, John Doe"
+
+  # Test Adding New Event
+  - title: "Click on a calendar day to add event"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for event modal to appear"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Verify event modal opened and is visible"
+    action: "verify"
+    verification:
+      selector: "#eventModal[style*='display: block']"
+
+  - title: "Verify modal title shows Add Event"
+    action: "verify"
+    verification:
+      text: "Add Event"
+
+  - title: "Fill event title"
+    action: "fill"
+    target: "#eventTitle"
+    data:
+      value: "Test Meeting"
+
+  - title: "Fill event description"
+    action: "fill"
+    target: "#eventDescription"
+    data:
+      value: "This is a test meeting created by automated testing"
+
+  - title: "Fill event date"
+    action: "fill"
+    target: "#eventDate"
+    data:
+      value: "2025-09-22"
+
+  - title: "Fill event time"
+    action: "fill"
+    target: "#eventTime"
+    data:
+      value: "14:30"
+
+  - title: "Save the event"
+    action: "click"
+    target: ".save-btn"
+
+  - title: "Wait for event to be saved"
+    action: "wait"
+    data:
+      seconds: 3
+
+  - title: "Verify modal closed after saving"
+    action: "verify"
+    verification:
+      selector: "#eventModal[style*='display: none']"
+
+  - title: "Verify saved event appears in upcoming events list"
+    action: "verify"
+    verification:
+      text: "Test Meeting"
+
+  # Test Adding Second Event
+  - title: "Click on another day for second event"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Fill second event title"
+    action: "fill"
+    target: "#eventTitle"
+    data:
+      value: "Project Review"
+
+  - title: "Fill second event description"
+    action: "fill"
+    target: "#eventDescription"
+    data:
+      value: "Review project progress and deliverables"
+
+  - title: "Set date for second event"
+    action: "fill"
+    target: "#eventDate"
+    data:
+      value: "2025-09-26"
+
+  - title: "Set time for second event"
+    action: "fill"
+    target: "#eventTime"
+    data:
+      value: "10:00"
+
+  - title: "Save second event"
+    action: "click"
+    target: ".save-btn"
+
+  - title: "Wait for second event to save"
+    action: "wait"
+    data:
+      seconds: 3
+
+  - title: "Verify second event appears in upcoming events"
+    action: "verify"
+    verification:
+      text: "Project Review"
+
+  # Test Event Validation - Empty Fields
+  - title: "Click on day for validation test"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Leave title empty and try to save"
+    action: "click"
+    target: ".save-btn"
+
+  - title: "Verify validation prevents empty title"
+    action: "verify"
+    verification:
+      selector: "#eventTitle:invalid"
+
+  - title: "Cancel empty event creation"
+    action: "click"
+    target: ".cancel-btn"
+
+  - title: "Wait for modal to close"
+    action: "wait"
+    data:
+      seconds: 2
+
+  # Test Event with Special Characters
+  - title: "Click day for special character test"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Fill title with special characters"
+    action: "fill"
+    target: "#eventTitle"
+    data:
+      value: "Meeting @ Company & Partners (Q3 2025)"
+
+  - title: "Fill description with special content"
+    action: "fill"
+    target: "#eventDescription"
+    data:
+      value: "Quarterly review: financials, KPIs & strategic planning - 100% confidential"
+
+  - title: "Set date"
+    action: "fill"
+    target: "#eventDate"
+    data:
+      value: "2025-09-16"
+
+  - title: "Set time"
+    action: "fill"
+    target: "#eventTime"
+    data:
+      value: "09:00"
+
+  - title: "Save special character event"
+    action: "click"
+    target: ".save-btn"
+
+  - title: "Wait for save"
+    action: "wait"
+    data:
+      seconds: 3
+
+  # Test Modal Close Functionality
+  - title: "Open modal and test close button"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Test close button"
+    action: "click"
+    target: ".close"
+
+  - title: "Verify modal closed properly after close button"
+    action: "verify"
+    verification:
+      selector: "#eventModal[style*='display: none']"
+
+  # Test Cancel Button
+  - title: "Open modal for cancel test"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Fill some data"
+    action: "fill"
+    target: "#eventTitle"
+    data:
+      value: "This will be cancelled"
+
+  - title: "Click cancel button"
+    action: "click"
+    target: ".cancel-btn"
+
+  - title: "Verify modal closed after cancel button"
+    action: "verify"
+    verification:
+      selector: "#eventModal[style*='display: none']"
+
+  # Verify Events in Upcoming Section
+  - title: "Check if events appear in upcoming section"
+    action: "verify"
+    verification:
+      selector: "#eventsList"
+
+  - title: "Verify upcoming events section has content"
+    action: "verify"
+    verification:
+      text: "Upcoming Events"
+
+  # Test Different Time Formats
+  - title: "Add event with early morning time"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Fill early meeting title"
+    action: "fill"
+    target: "#eventTitle"
+    data:
+      value: "Early Morning Workout"
+
+  - title: "Set early time"
+    action: "fill"
+    target: "#eventTime"
+    data:
+      value: "06:00"
+
+  - title: "Set date"
+    action: "fill"
+    target: "#eventDate"
+    data:
+      value: "2025-09-17"
+
+  - title: "Save early event"
+    action: "click"
+    target: ".save-btn"
+
+  - title: "Wait for save"
+    action: "wait"
+    data:
+      seconds: 3
+
+  # Test Late Evening Event
+  - title: "Add late evening event"
+    action: "click"
+    target: ".calendar-day:not(.other-month)"
+
+  - title: "Wait for modal"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Fill evening event title"
+    action: "fill"
+    target: "#eventTitle"
+    data:
+      value: "Evening Dinner"
+
+  - title: "Set evening time"
+    action: "fill"
+    target: "#eventTime"
+    data:
+      value: "20:30"
+
+  - title: "Set date"
+    action: "fill"
+    target: "#eventDate"
+    data:
+      value: "2025-09-24"
+
+  - title: "Save evening event"
+    action: "click"
+    target: ".save-btn"
+
+  - title: "Wait for save"
+    action: "wait"
+    data:
+      seconds: 3
+
+  # Final Verification
+  - title: "Verify calendar still functional after adding events"
+    action: "verify"
+    verification:
+      selector: "#calendarGrid"
+
+  - title: "Test navigation still works"
+    action: "click"
+    target: "#nextMonth"
+
+  - title: "Wait for navigation"
+    action: "wait"
+    data:
+      seconds: 2
+
+  - title: "Return to current month"
+    action: "click"
+    target: "#prevMonth"
+
+  - title: "Final wait"
+    action: "wait"
+    data:
+      seconds: 2
+
+  # Test Event Persistence After Page Reload
+  - title: "Reload page to test JSON persistence"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/calendar"
+
+  - title: "Wait for page reload"
+    action: "wait"
+    data:
+      seconds: 3
+
+  - title: "Verify events persist after reload - Test Meeting"
+    action: "verify"
+    verification:
+      text: "Test Meeting"
+
+  - title: "Verify events persist after reload - Project Review"
+    action: "verify"
+    verification:
+      text: "Project Review"
+
+  - title: "Logout to complete test"
+    action: "click"
+    target: ".logout-btn"
