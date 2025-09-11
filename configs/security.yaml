@@ -1,0 +1,162 @@
+# Security Configuration for AI WebTester Framework
+# Defines regex patterns for detecting and redacting sensitive data
+
+redaction:
+  enabled: true
+  replacement_text: "[REDACTED]"
+  
+  # Core sensitive data patterns
+  patterns:
+    # Authorization and Authentication
+    - name: "authorization_bearer"
+      regex: "(?i)(authorization\\s*:\\s*bearer\\s+)[A-Za-z0-9\\-._~+/=]+"
+      replacement: "\\g<1>[REDACTED_TOKEN]"
+      description: "Bearer tokens in Authorization headers"
+      
+    - name: "authorization_basic"
+      regex: "(?i)(authorization\\s*:\\s*basic\\s+|auth\\s*=\\s*Basic\\s+)[A-Za-z0-9+/=]+"
+      replacement: "\\1[REDACTED_BASIC]"
+      description: "Basic auth credentials"
+      
+    - name: "api_key_header"
+      regex: "(?i)(x-api-key|apikey|api-key|api_key)\\s*[:=]\\s*[A-Za-z0-9\\-._~+/=]{8,}"
+      replacement: "\\g<1>: [REDACTED_API_KEY]"
+      description: "API keys in headers"
+      
+    - name: "session_token"
+      regex: "(?i)(session[\\s_]*token|sessionid|session_id|sess)[\\s_]*[:=]\\s*[A-Za-z0-9\\-._~+/=]{8,}"
+      replacement: "\\1=[REDACTED_SESSION]"
+      description: "Session tokens and IDs"
+      
+    # AWS Credentials
+    - name: "aws_access_key"
+      regex: "(AKIA|ASIA)[0-9A-Z]{16}"
+      replacement: "[REDACTED_AWS_ACCESS_KEY]"
+      description: "AWS access key IDs"
+      
+    - name: "aws_secret_key"
+      regex: "(?i)(aws_secret_access_key|aws_secret_key)\\s*[:=]\\s*[A-Za-z0-9+/]{40}"
+      replacement: "\\g<1>=[REDACTED_AWS_SECRET]"
+      description: "AWS secret access keys"
+      
+    # Personal Information
+    - name: "email_address"
+      regex: "(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b"
+      replacement: "[REDACTED_EMAIL]"
+      description: "Email addresses"
+      
+    - name: "phone_number"
+      regex: "(?:\\+?1[-\\s.]?)?\\(?[2-9][0-8][0-9]\\)?[-\\s.]?[2-9][0-9]{2}[-\\s.]?[0-9]{4}|\\+1-\\d{3}-\\d{3}-\\d{4}"
+      replacement: "[REDACTED_PHONE]"
+      description: "US phone numbers including +1-555-123-4567 format"
+      
+    - name: "ssn"
+      regex: "\\b\\d{3}-?\\d{2}-?\\d{4}\\b"
+      replacement: "[REDACTED_SSN]"
+      description: "Social Security Numbers"
+      
+    # Credit Card Information
+    - name: "credit_card"
+      regex: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b"
+      replacement: "[REDACTED_CREDIT_CARD]"
+      description: "Credit card numbers"
+      
+    - name: "cvv"
+      regex: "(?i)(cvv|cvc|cid|security\\s*code)\\s*[:=]\\s*\\d{3,4}"
+      replacement: "\\g<1>=[REDACTED_CVV]"
+      description: "Credit card CVV codes"
+      
+    # Database Credentials
+    - name: "db_connection_string"
+      regex: "(?i)(mongodb://|mysql://|postgresql://|postgres://)[^\\s\"'`]+"
+      replacement: "[REDACTED_DB_CONNECTION]"
+      description: "Database connection strings"
+      
+    - name: "password_field"
+      regex: "(?i)(password|passwd|pwd)\\s*[:=]\\s*[\"']?[^\\s\"'`]{6,}[\"']?"
+      replacement: "\\g<1>=\"[REDACTED_PASSWORD]\""
+      description: "Password fields"
+      
+    # API Keys and Secrets
+    - name: "openai_api_key"
+      regex: "sk-[A-Za-z0-9]{20,}"
+      replacement: "[REDACTED_OPENAI_KEY]"
+      description: "OpenAI API keys"
+      
+    - name: "github_token"
+      regex: "gh[pousr]_[A-Za-z0-9]{36}"
+      replacement: "[REDACTED_GITHUB_TOKEN]"
+      description: "GitHub tokens"
+      
+    - name: "stripe_key"
+      regex: "(sk|pk)_(test|live)_[A-Za-z0-9]{24,}"
+      replacement: "[REDACTED_STRIPE_KEY]"
+      description: "Stripe API keys"
+      
+    - name: "jwt_token"
+      regex: "eyJ[A-Za-z0-9+/=]*\\.[A-Za-z0-9+/=]*\\.[A-Za-z0-9+/=]*"
+      replacement: "[REDACTED_JWT]"
+      description: "JSON Web Tokens"
+      
+    # URLs with credentials
+    - name: "url_with_credentials"
+      regex: "(?i)(https?://)([^:]+):([^@]+)@"
+      replacement: "\\g<1>[REDACTED_USER]:[REDACTED_PASS]@"
+      description: "URLs containing credentials"
+      
+    # Generic secrets (broad pattern)
+    - name: "generic_secret"
+      regex: "(?i)(secret|private|key|token)[\\s_]*[:=]\\s*[\"']?[A-Za-z0-9\\-._~+/=]{8,}[\"']?"
+      replacement: "\\1=\"[REDACTED_SECRET]\""
+      description: "Generic secret patterns"
+      
+    - name: "bearer_token_generic"
+      regex: "(?i)(bearer[\\s_]+)[A-Za-z0-9\\-._~+/=]{8,}"
+      replacement: "\\1[REDACTED_BEARER]"
+      description: "Generic bearer tokens"
+      
+    - name: "token_query_param"
+      regex: "(?i)(token[\\s_]*=)[A-Za-z0-9\\-._~+/=]{8,}"
+      replacement: "\\1[REDACTED_TOKEN]"
+      description: "Token query parameters"
+
+  # Special handling for different content types
+  content_types:
+    json:
+      preserve_structure: true
+      field_patterns:
+        - "(?i)\"(password|secret|token|key|auth)\"\\s*:\\s*\"[^\"]+\""
+        - "(?i)\"(email|mail)\"\\s*:\\s*\"[^\"]+@[^\"]+\""
+    
+    html:
+      preserve_structure: true
+      attribute_patterns:
+        - "(?i)(value|data-\\w+)\\s*=\\s*[\"'][^\"']*(?:password|secret|token)[^\"']*[\"']"
+        - "(?i)href\\s*=\\s*[\"'][^\"']*://[^:]+:[^@]+@[^\"']*[\"']"
+    
+    xml:
+      preserve_structure: true
+      element_patterns:
+        - "(?i)<(password|secret|token|key)>[^<]+</\\1>"
+        - "(?i)<\\w+[^>]*email\\s*=\\s*[\"'][^\"']*@[^\"']*[\"']"
+
+# Audit configuration
+audit:
+  log_redactions: true
+  redaction_stats: true
+  exclude_patterns: []  # Patterns to exclude from redaction (test environments only)
+
+# Environment-specific settings
+environments:
+  development:
+    enabled: true
+    audit_log_level: "INFO"
+    
+  staging:
+    enabled: true
+    audit_log_level: "INFO"
+    
+  production:
+    enabled: true
+    audit_log_level: "WARNING"
+    strict_mode: true  # More aggressive redaction

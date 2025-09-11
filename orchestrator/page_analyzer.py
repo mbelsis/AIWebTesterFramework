@@ -207,7 +207,7 @@ class PageAnalyzer:
         """Identify the type of page (login, registration, dashboard, etc.)"""
         
         page_text = soup.get_text().lower()
-        title = soup.title.string.lower() if soup.title else ""
+        title = soup.title.string.lower() if soup.title and soup.title.string else ""
         
         # Check for common page types
         if any(word in page_text or word in title for word in ['login', 'sign in', 'authenticate']):

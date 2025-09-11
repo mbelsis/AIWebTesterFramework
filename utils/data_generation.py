@@ -23,6 +23,10 @@ def inject_seeded_data_into_env(env_config: Dict[str, Any], run_id: Optional[str
     if run_id is None:
         run_id = env_config.get('run_id', 'default_run')
     
+    # Ensure run_id is a string
+    if run_id is None:
+        run_id = 'default_run'
+    
     faker = get_run_specific_faker(run_id)
     updated_config = env_config.copy()
     

@@ -10,6 +10,25 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 
+# Import redaction utilities for secure LLM communications
+try:
+    from utils.redaction import get_redactor, redact_text, redact_json, ContentType
+    REDACTION_AVAILABLE = True
+except ImportError:
+    from enum import Enum
+    REDACTION_AVAILABLE = False
+    
+    # Define minimal fallback to satisfy type checker
+    class ContentType(Enum):
+        TEXT = "text"
+        JSON = "json"
+        HTML = "html"
+        XML = "xml"
+        URL = "url"
+    
+    def get_redactor():
+        return None
+
 try:
     import backoff
     HAS_BACKOFF = True
@@ -145,6 +164,17 @@ class OpenAIProvider:
         self.max_retries = max_retries
         self.timeout = timeout
         
+        # Initialize redaction if available
+        self.redactor = None
+        if REDACTION_AVAILABLE:
+            try:
+                self.redactor = get_redactor()
+                if self.redactor and self.redactor.is_enabled():
+                    logger.info("Security redaction enabled for OpenAI communications")
+            except Exception as e:
+                logger.warning(f"Failed to initialize redactor in OpenAI provider: {e}")
+                self.redactor = None
+        
         if not self.api_key:
             logger.warning("OpenAI API key not provided. AI features will not be available.")
             self.client = None
@@ -196,6 +226,18 @@ class OpenAIProvider:
             )
         
         try:
+            # Prepare redacted messages for logging
+            redacted_messages = messages
+            if self.redactor and self.redactor.is_enabled():
+                try:
+                    redacted_messages = [{
+                        "role": msg["role"],
+                        "content": self.redactor.redact_text(msg["content"], ContentType.TEXT)
+                    } for msg in messages]
+                except Exception as e:
+                    logger.error(f"Error redacting messages for logging: {e}")
+                    redacted_messages = messages
+            
             # Prepare request parameters
             request_params = {
                 "model": self.model.value,
@@ -222,7 +264,7 @@ class OpenAIProvider:
             # Use max_output_tokens for Responses API
             request_params["max_output_tokens"] = max_tokens
             
-            logger.debug(f"Making OpenAI API request with {len(messages)} messages")
+            logger.debug(f"Making OpenAI API request with {len(redacted_messages)} messages")
             
             # Make API call using Responses API
             if self.client is None:
@@ -233,6 +275,13 @@ class OpenAIProvider:
             # Extract response data from Responses API
             content = response.output_text or ""
             tokens_used = response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0
+            
+            # Apply redaction to response content if needed
+            if self.redactor and self.redactor.is_enabled():
+                try:
+                    content = self.redactor.redact_text(content, ContentType.TEXT)
+                except Exception as e:
+                    logger.error(f"Error redacting OpenAI response: {e}")
             
             # Parse JSON if in JSON mode
             json_data = None
@@ -255,11 +304,19 @@ class OpenAIProvider:
             )
             
         except Exception as e:
-            logger.error(f"OpenAI API request failed: {str(e)}")
+            # Apply redaction to error messages that might contain sensitive data
+            error_message = str(e)
+            if self.redactor and self.redactor.is_enabled():
+                try:
+                    error_message = self.redactor.redact_text(error_message, ContentType.TEXT)
+                except Exception as redact_error:
+                    logger.error(f"Error redacting OpenAI error message: {redact_error}")
+            
+            logger.error(f"OpenAI API request failed: {error_message}")
             return OpenAIResponse(
                 content="",
                 success=False,
-                error_message=str(e)
+                error_message=error_message
             )
     
     @async_retry_on_exception
@@ -290,6 +347,18 @@ class OpenAIProvider:
             )
         
         try:
+            # Prepare redacted messages for logging
+            redacted_messages = messages
+            if self.redactor and self.redactor.is_enabled():
+                try:
+                    redacted_messages = [{
+                        "role": msg["role"],
+                        "content": self.redactor.redact_text(msg["content"], ContentType.TEXT)
+                    } for msg in messages]
+                except Exception as e:
+                    logger.error(f"Error redacting messages for logging: {e}")
+                    redacted_messages = messages
+            
             # Prepare request parameters
             request_params = {
                 "model": self.model.value,
@@ -316,7 +385,7 @@ class OpenAIProvider:
             # Use max_output_tokens for Responses API
             request_params["max_output_tokens"] = max_tokens
             
-            logger.debug(f"Making async OpenAI API request with {len(messages)} messages")
+            logger.debug(f"Making async OpenAI API request with {len(redacted_messages)} messages")
             
             # Make API call using Responses API
             if self.async_client is None:

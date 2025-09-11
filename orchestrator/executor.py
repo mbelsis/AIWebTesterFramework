@@ -1,7 +1,24 @@
 import asyncio
 import time
 import json
+import logging
 from typing import Dict, Any, Optional
+
+# Import redaction utilities for secure test execution logging
+try:
+    from utils.redaction import get_redactor, ContentType
+    REDACTION_AVAILABLE = True
+except ImportError:
+    from enum import Enum
+    REDACTION_AVAILABLE = False
+    
+    class ContentType(Enum):
+        TEXT = "text"
+    
+    def get_redactor():
+        return None
+
+logger = logging.getLogger(__name__)
 
 class Step:
     def __init__(self, data: Dict[str, Any]):
@@ -20,6 +37,17 @@ class Executor:
         self.run_id = run_id
         self._step_active = False
         
+        # Initialize redaction if available
+        self.redactor = None
+        if REDACTION_AVAILABLE:
+            try:
+                self.redactor = get_redactor()
+                if self.redactor and self.redactor.is_enabled():
+                    logger.info("Security redaction enabled for test execution")
+            except Exception as e:
+                logger.warning(f"Failed to initialize redactor in executor: {e}")
+                self.redactor = None
+        
         # Setup browser event listeners
         self.page.on("console", self._on_console)
         self.page.on("request", self._on_request)
@@ -27,20 +55,47 @@ class Executor:
 
     def _on_console(self, msg):
         if not self.cr: return
+        
+        # Apply redaction to console message
+        console_text = msg.text
+        if self.redactor and self.redactor.is_enabled():
+            try:
+                console_text = self.redactor.redact_text(console_text, ContentType.TEXT)
+            except Exception as e:
+                logger.error(f"Error redacting console message: {e}")
+        
         asyncio.create_task(self.cr.send_log(
-            self.run_id, msg.type, "console", msg.text, time.time()
+            self.run_id, msg.type, "console", console_text, time.time()
         ))
 
     def _on_request(self, req):
         if not self.cr: return
+        
+        # Apply redaction to request URL and method
+        request_url = req.url
+        if self.redactor and self.redactor.is_enabled():
+            try:
+                request_url = self.redactor.redact_url(request_url)
+            except Exception as e:
+                logger.error(f"Error redacting request URL: {e}")
+        
         asyncio.create_task(self.cr.send_log(
-            self.run_id, "info", "network", f"→ {req.method} {req.url}", time.time()
+            self.run_id, "info", "network", f"→ {req.method} {request_url}", time.time()
         ))
 
     def _on_response(self, resp):
         if not self.cr: return
+        
+        # Apply redaction to response URL
+        response_url = resp.url
+        if self.redactor and self.redactor.is_enabled():
+            try:
+                response_url = self.redactor.redact_url(response_url)
+            except Exception as e:
+                logger.error(f"Error redacting response URL: {e}")
+        
         asyncio.create_task(self.cr.send_log(
-            self.run_id, "info", "network", f"← {resp.status} {resp.url}", time.time()
+            self.run_id, "info", "network", f"← {resp.status} {response_url}", time.time()
         ))
 
     async def _thumb_loop(self):

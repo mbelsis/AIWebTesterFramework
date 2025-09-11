@@ -18,6 +18,7 @@ class TestGraph:
         playwright_instance = None
         browser = None
         context = None
+        page = None
         sink = None
         
         try:
