@@ -19,9 +19,11 @@ templates = Jinja2Templates(directory="templates")
 # Session storage (in production, use Redis or similar)
 sessions = {}
 
-# Data file paths
-USERS_FILE = "data/users.json"
-EVENTS_FILE = "data/events.json"
+# Data file paths - using absolute paths to ensure they work from any directory
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+USERS_FILE = os.path.join(BASE_DIR, "data", "users.json")
+EVENTS_FILE = os.path.join(BASE_DIR, "data", "events.json")
 
 # Pydantic models
 class User(BaseModel):
