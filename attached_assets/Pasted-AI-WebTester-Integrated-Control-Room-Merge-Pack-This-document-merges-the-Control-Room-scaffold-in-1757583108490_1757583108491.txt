@@ -1,0 +1,541 @@
+AI WebTester – Integrated Control Room Merge Pack
+This document merges the Control Room scaffold into the existing ai-webtester repo structure, adds CLI flags, and wires Playwright + Orchestrator to stream live updates and expose artifacts in one place.
+ 
+0) Final Repo Layout (merged)
+ai-webtester/
+├─ pyproject.toml
+├─ README.md
+├─ .env.sample
+├─ configs/
+│  ├─ provider.yaml
+│  ├─ security.yaml
+│  ├─ ontology.yaml
+│  └─ profiles/
+│     └─ employee.default.yaml
+├─ examples/
+│  ├─ env.staging.yaml
+│  └─ plan.create_employee.yaml
+├─ cli/
+│  └─ main.py                  # UPDATED: --control-room, --headful, --artifacts-dir
+├─ orchestrator/
+│  ├─ graph.py
+│  ├─ planner.py
+│  ├─ executor.py              # UPDATED: emit Control Room events
+│  ├─ verifier.py
+│  ├─ reporter.py
+│  ├─ tools.py
+│  └─ control_room.py          # NEW: runner ↔ control room bridge
+├─ browser/
+│  ├─ context.py               # UPDATED: screenshot tap for thumbnails
+│  ├─ selectors.py
+│  ├─ actions.py
+│  ├─ network.py
+│  └─ console.py
+├─ domdiet/
+│  ├─ extractor.py
+│  ├─ chunker.py
+│  ├─ modal_detector.py
+│  └─ redactor.py
+├─ data_gen/
+│  ├─ generators.py
+│  └─ registry.py
+├─ learned_pom/
+│  ├─ store.py
+│  └─ repair.py
+├─ evidence/
+│  ├─ sink.py
+│  ├─ bundler.py
+│  ├─ report_builder.py
+│  └─ templates/
+│     └─ report.md.j2
+├─ control_room/
+│  ├─ backend/
+│  │  └─ app/ (main.py, ws.py, models.py, state.py, artifacts.py)
+│  └─ frontend/ (React + Vite project; served from /dist)
+├─ run_test.py                  # NEW: minimal launcher (single-file usage)
+└─ tests/
+   └─ ...
+ 
+1) CLI: add flags and wire Control Room
+cli/main.py (excerpt)
+import typer, time, asyncio, json
+from pathlib import Path
+from orchestrator.graph import TestGraph
+from orchestrator.control_room import ControlRoom
+
+app = typer.Typer(add_completion=False)
+
+@app.command()
+def run(
+    plan: Path = typer.Option(..., help="Path to plan YAML"),
+    env: Path = typer.Option(..., help="Path to environment YAML"),
+    headful: bool = typer.Option(True, help="Open visible browser"),
+    control_room: bool = typer.Option(False, help="Enable live Control Room"),
+    artifacts_dir: Path = typer.Option(Path("artifacts"), help="Artifacts output dir"),
+):
+    """Run a test plan with optional Control Room."""
+    run_id = time.strftime("%Y%m%dT%H%M%S")
+    artifacts_dir = artifacts_dir / run_id
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+    async def _run():
+        cr = None
+        if control_room:
+            cr = ControlRoom()
+            cr.start_in_background()
+            print("Control Room ➜ http://127.0.0.1:8788")
+
+        graph = TestGraph(
+            artifacts_dir=str(artifacts_dir),
+            headful=headful,
+            control_room=cr,
+            run_id=run_id
+        )
+        result = await graph.run(str(plan), str(env))
+        (artifacts_dir / "run.json").write_text(json.dumps(result, indent=2))
+
+    asyncio.run(_run())
+
+if __name__ == "__main__":
+    app()
+ 
+2) Orchestrator: emit live events from executor
+orchestrator/executor.py (diff-style snippets)
+# NEW imports
+import time, asyncio
+from orchestrator.control_room import ControlRoom
+
+class Executor:
+    def __init__(self, page, context, sink, control_room: ControlRoom|None, run_id: str):
+        self.page = page
+        self.context = context
+        self.sink = sink
+        self.cr = control_room
+        self.run_id = run_id
+        # tap console and network
+        self.page.on("console", self._on_console)
+        self.page.on("request", self._on_request)
+        self.page.on("response", self._on_response)
+
+    def _on_console(self, msg):
+        if not self.cr: return
+        asyncio.create_task(self.cr.send_log(self.run_id, msg.type, "console", msg.text, time.time()))
+
+    def _on_request(self, req):
+        if not self.cr: return
+        asyncio.create_task(self.cr.send_log(self.run_id, "info", "network", f"→ {req.method} {req.url}", time.time()))
+
+    def _on_response(self, resp):
+        if not self.cr: return
+        asyncio.create_task(self.cr.send_log(self.run_id, "info", "network", f"← {resp.status} {resp.url}", time.time()))
+
+    async def _thumb_loop(self):
+        # throttled screenshot loop while a step is active
+        last = 0
+        while self._step_active:
+            now = time.time()
+            if now - last > 0.6:
+                try:
+                    png = await self.page.screenshot(full_page=False)
+                    await self.cr.send_thumb_png(self.run_id, png, ts=now)
+                except Exception:
+                    pass
+                last = now
+            await asyncio.sleep(0.05)
+
+    async def run_step(self, idx: int, step):
+        self._step_active = True
+        if self.cr:
+            await self.cr.send_step(self.run_id, idx, step.title, "executing")
+        thumb_task = asyncio.create_task(self._thumb_loop()) if self.cr else None
+
+        try:
+            # ... existing step execution logic ...
+            # example: click/save/verify
+            pass
+        except Exception as e:
+            if self.cr:
+                await self.cr.send_log(self.run_id, "error", "agent", f"Step failed: {e}", time.time())
+                await self.cr.send_step(self.run_id, idx, step.title, "failed", str(e))
+            raise
+        finally:
+            self._step_active = False
+            if thumb_task:
+                thumb_task.cancel()
+
+        if self.cr:
+            await self.cr.send_step(self.run_id, idx, step.title, "passed")
+Approval pause (e.g., before destructive action)
+    async def require_approval(self, reason: str):
+        if not self.cr:
+            return True
+        await self.cr.send_status(self.run_id, "awaiting_approval", reason)
+        cmd = await self.cr.wait_for_control(self.run_id, {"approve","reject","stop"})
+        if cmd.get("cmd") == "approve":
+            await self.cr.send_status(self.run_id, "running", "Approved")
+            return True
+        elif cmd.get("cmd") == "reject":
+            await self.cr.send_status(self.run_id, "paused", "Rejected by user")
+            return False
+        else:
+            await self.cr.send_status(self.run_id, "cancelled", "Stopped by user")
+            raise RuntimeError("Run stopped by user")
+ 
+3) Orchestrator Graph: pass Control Room down
+orchestrator/graph.py (excerpt)
+class TestGraph:
+    def __init__(self, artifacts_dir: str, headful: bool, control_room, run_id: str):
+        self.artifacts_dir = artifacts_dir
+        self.headful = headful
+        self.cr = control_room
+        self.run_id = run_id
+
+    async def run(self, plan_path: str, env_path: str):
+        # setup browser context (video + trace)
+        from browser.context import create_context
+        browser, context, page = await create_context(headful=self.headful, artifacts_dir=self.artifacts_dir)
+
+        # notify CR
+        if self.cr:
+            await self.cr.send_status(self.run_id, "starting", "Launching")
+
+        # wire executor with CR
+        from evidence.sink import EvidenceSink
+        sink = EvidenceSink(self.artifacts_dir)
+        from orchestrator.executor import Executor
+        exec = Executor(page, context, sink, self.cr, self.run_id)
+
+        # ... load plan/env, iterate steps and exec.run_step(...)
+        # finalize
+        await context.tracing.stop(path=str(Path(self.artifacts_dir)/"trace.zip"))
+        await context.close(); await browser.close()
+
+        if self.cr:
+            await self.cr.send_status(self.run_id, "passed", "Done")
+
+        return {"run_id": self.run_id, "status": "passed", "plan_name": "(from plan)", "started_at": time.time()}
+ 
+4) Browser Context: ensure video + trace + headers
+browser/context.py
+from playwright.async_api import async_playwright
+from pathlib import Path
+
+async def create_context(headful: bool, artifacts_dir: str):
+    p = await async_playwright().start()
+    browser = await p.chromium.launch(headless=not headful)
+    context = await browser.new_context(
+        record_video_dir=str(Path(artifacts_dir)/"video")
+    )
+    await context.tracing.start(screenshots=True, snapshots=True, sources=True)
+    page = await context.new_page()
+    return browser, context, page
+ 
+5) Minimal Runner Script (single-file execution)
+run_test.py
+import asyncio, json, time
+from pathlib import Path
+from orchestrator.graph import TestGraph
+from orchestrator.control_room import ControlRoom
+
+PLAN = "examples/plan.create_employee.yaml"
+ENV = "examples/env.staging.yaml"
+
+async def main():
+    run_id = time.strftime("%Y%m%dT%H%M%S")
+    artifacts = Path("artifacts")/run_id
+    artifacts.mkdir(parents=True, exist_ok=True)
+
+    cr = ControlRoom(); cr.start_in_background()
+    graph = TestGraph(str(artifacts), headful=True, control_room=cr, run_id=run_id)
+    out = await graph.run(PLAN, ENV)
+    (artifacts/"run.json").write_text(json.dumps(out, indent=2))
+
+if __name__ == "__main__":
+    asyncio.run(main())
+ 
+6) Build & Run
+Control Room backend (served automatically by FastAPI if frontend/dist exists):
+cd control_room/frontend
+npm install
+npm run build
+Execute with live Control Room
+python -m cli.main run \
+  --plan examples/plan.create_employee.yaml \
+  --env examples/env.staging.yaml \
+  --headful --control-room
+# Open http://127.0.0.1:8788
+ 
+7) QA Checklist
+•	 Control Room shows Status/Step/Logs as the run progresses.
+•	 Thumbnails update ~1–2 fps and stop at run end.
+•	 Approve/Reject controls gate risky actions in executor.
+•	 Artifacts appear under artifacts/<run_id>/ including video/, trace.zip, run.json.
+•	 Front-end can list runs and open a specific run's live view.
+ 
+8) Next Enhancements
+•	Add artifact browser API and UI to download session.mp4, trace.zip, report.pdf.
+•	Gate HITL commands with a simple token/passphrase.
+•	Optional WebRTC stream for smoother video.
+•	OpenTelemetry export with run_id tagging.
+
+
+
+Ai Web Tester – Demo App + Working Plan/env
+AI WebTester – Demo App + Working Plan/Env (End to End)
+This pack gives you a tiny mock web app (FastAPI + Jinja2) plus a ready plan/env so you can run the full pipeline: Control Room live view → agent executes → video/trace/logs captured → verification via API → report.
+________________________________________
+0) Folder Additions
+ai-webtester/
+├─ mock_app/
+│ ├─ app.py
+│ ├─ requirements.txt
+│ └─ templates/
+│ ├─ login.html
+│ └─ employees_new.html
+├─ examples/
+│ ├─ env.local.yaml # NEW (points to mock app at :5001)
+│ └─ plan.demo_create_employee.yaml # NEW (uses form.plan_and_fill)
+└─ configs/
+└─ profiles/
+└─ employee.default.yaml # Sample profile (if not already present)
+________________________________________
+1) Mock App (FastAPI)
+mock_app/requirements.txt
+fastapi
+uvicorn
+jinja2
+pydantic
+mock_app/app.py
+from fastapi import FastAPI, Request, Response, Form
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+from typing import List, Optional
+import time
+
+app = FastAPI(title="AIWT Demo App")
+app.mount("/static", StaticFiles(directory="mock_app/static"), name="static")
+templates = Jinja2Templates(directory="mock_app/templates")
+
+# In-memory store (resets on server restart)
+class Employee(BaseModel):
+id: int
+first_name: str
+last_name: str
+email: str
+role: str
+created_at: float
+
+EMPLOYEES: List[Employee] = []
+NEXT_ID = 1
+
+# Very light session: if cookie present, you are logged in
+SESSION_COOKIE = "aiwt_session"
+
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request):
+return RedirectResponse(url="/login")
+
+@app.get("/login", response_class=HTMLResponse)
+def login_view(request: Request):
+return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login")
+def login_post(username: str = Form(...), password: str = Form(...), domain: Optional[str] = Form(None)):
+# Accept any credentials; set a cookie and redirect to /employees/new
+resp = RedirectResponse(url="/employees/new", status_code=303)
+resp.set_cookie(key=SESSION_COOKIE, value="ok", httponly=True)
+return resp
+
+@app.get("/employees/new", response_class=HTMLResponse)
+def employees_new(request: Request, created: Optional[int] = None):
+if request.cookies.get(SESSION_COOKIE) != "ok":
+return RedirectResponse(url="/login")
+return templates.TemplateResponse("employees_new.html", {"request": request, "created": created})
+
+@app.post("/employees")
+def employees_create(request: Request,
+firstName: str = Form(...),
+lastName: str = Form(...),
+email: str = Form(...),
+role: str = Form(...)):
+global NEXT_ID
+if request.cookies.get(SESSION_COOKIE) != "ok":
+return RedirectResponse(url="/login")
+
+# simple unique email check
+for e in EMPLOYEES:
+if e.email.lower() == email.lower():
+# Simulate a validation error
+return templates.TemplateResponse("employees_new.html", {
+"request": request,
+mock_app/templates/login.html
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Demo Login</title>
+<style>body{font-family:sans-serif;max-width:600px;margin:40px auto}</style>
+</head>
+<body>
+<h1>Login</h1>
+<form method="post" action="/login">
+<label for="username">Username</label>
+<input id="username" name="username" type="text" placeholder="user@example.com" required />
+<br/>
+<label for="password">Password</label>
+<input id="password" name="password" type="password" required />
+<br/>
+<label for="domain">Domain</label>
+<input id="domain" name="domain" type="text" placeholder="corp" />
+<br/>
+<button id="loginBtn" data-testid="login-btn" type="submit">Sign in</button>
+</form>
+</body>
+</html>
+mock_app/templates/employees_new.html
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>New Employee</title>
+<style>
+body{font-family:sans-serif;max-width:800px;margin:40px auto}
+.toast-success{border:1px solid #2ecc71;background:#eafaf1;padding:10px;margin-bottom:10px}
+.toast-error{border:1px solid #e74c3c;background:#fdecea;padding:10px;margin-bottom:10px}
+label{display:block;margin-top:10px}
+input, select{padding:6px;width:360px}
+.actions{margin-top:16px}
+</style>
+</head>
+<body>
+<h1>New Employee</h1>
+
+{% if created %}
+<div class="toast-success">Employee created</div>
+{% endif %}
+{% if error %}
+<div class="toast-error">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/employees">
+<label for="firstName">First Name</label>
+<input id="firstName" name="firstName" type="text" required value="{{ prefill.firstName if prefill }}" />
+
+<label for="lastName">Last Name</label>
+<input id="lastName" name="lastName" type="text" required value="{{ prefill.lastName if prefill }}" />
+
+<label for="email">Work Email</label>
+<input id="email" name="email" type="email" required value="{{ prefill.email if prefill }}" />
+
+<label for="role">Role</label>
+<select id="role" name="role" required>
+{% set r = prefill.role if prefill else '' %}
+<option value="Engineer" {{ 'selected' if r=='Engineer' else '' }}>Engineer</option>
+<option value="Analyst" {{ 'selected' if r=='Analyst' else '' }}>Analyst</option>
+<option value="QA" {{ 'selected' if r=='QA' else '' }}>QA</option>
+</select>
+
+<div class="actions">
+<button data-testid="save-employee" type="submit">Save</button>
+<button data-testid="cancel" type="button" onclick="location.href='/employees/new'">Cancel</button>
+</div>
+</form>
+</body>
+</html>
+The page displays a .toast-success banner after creation and echoes validation errors. The selectors are stable (#firstName, #lastName, #email, select#role, [data-testid=save-employee]).
+________________________________________
+2) Example Env & Plan
+examples/env.local.yaml
+base_url: "http://127.0.0.1:5001"
+login:
+url: "http://127.0.0.1:5001/login"
+fields:
+username_selector: "#username"
+password_selector: "#password"
+domain_selector: "#domain"
+submit_selector: "button[type=submit]"
+creds_ref: "local-default"
+secrets:
+local-default:
+username: "meletis@example.com"
+password: "Password123!"
+domain: "corp"
+headers:
+X-Test-Run-Id: "{{run_id}}"
+api_base: "http://127.0.0.1:5001/api"
+examples/plan.demo_create_employee.yaml
+plan:
+name: "Demo: Create employee record"
+tags: ["demo","employees","crud","smoke"]
+risk: "low"
+steps:
+- action: "login"
+- action: "navigate"
+url: "/employees/new"
+- action: "form.plan_and_fill"
+profile: "employee.default"
+overrides:
+values:
+"#role": "Engineer"
+- action: "click"
+target: "SAVE"
+- action: "verify"
+asserts:
+- type: "dom.contains"
+selector: ".toast-success"
+text: "Employee created"
+- type: "api.get"
+url: "/employees?email={{ctx.email}}"
+expect:
+status: 200
+jsonpath:
+- path: "$.data[0].email"
+equals: "{{ctx.email}}"
+configs/profiles/employee.default.yaml (sample)
+first_name: faker.first_name
+last_name: faker.last_name
+email: faker.work_email(domain="example.com")
+role: choose("Engineer","Analyst","QA")
+________________________________________
+3) Run Instructions (End-to-End)
+1.	Start the mock app
+cd ai-webtester
+python -m venv .venv && source .venv/bin/activate
+pip install -r mock_app/requirements.txt
+uvicorn mock_app.app:app --reload --port 5001
+2.	Build the Control Room frontend (once)
+cd control_room/frontend
+npm install
+npm run build
+3.	Run the tester with Control Room (in another terminal)
+cd ai-webtester
+python -m cli.main run \
+--plan examples/plan.demo_create_employee.yaml \
+--env examples/env.local.yaml \
+--headful --control-room
+# Open http://127.0.0.1:8788 to watch live
+Expected:
+•	Browser opens, logs in, navigates to /employees/new, fills fields, saves.
+•	A green Employee created toast appears.
+•	Control Room shows thumbnails, steps, and logs.
+•	Artifacts at artifacts/<run_id>/ contain video/, trace.zip, console.jsonl, network.har, screenshots/, run.json.
+ 
+4) Optional Enhancements for the Demo
+•	Add a confirm modal after Save (e.g., "Send welcome email?") to exercise HITL approval.
+•	Add a second step: navigate to a list page and assert the new row exists.
+•	Add JSON schema validation for the API response in the verifier.
+•	Seed demo with a user so unique-email validation triggers on re-runs.
+ 
+5) Troubleshooting
+•	If the agent fails on selectors, verify the mock app is running at 127.0.0.1:5001 and the form IDs match (#firstName, #lastName, #email, select#role).
+•	If Control Room page is blank, ensure you built the frontend (npm run build) and the FastAPI backend mounted dist/ successfully.
+•	Use --artifacts-dir ./artifacts_demo to separate demo runs from real ones.
+ 
+With this pack, you can validate the entire AIWT flow in minutes and iterate on the agent logic with full live visibility and durable evidence bundles.
+🎉 Done! I created a third canvas with a working demo plan/env and a tiny mock app so you can run end-to-end immediately.
+•	Canvas: “AI WebTester – Demo App + Working Plan/Env”
+Includes: FastAPI mock app (login + /employees/new form + /api/employees), ready env.local.yaml and plan.demo_create_employee.yaml, plus step-by-step run instructions.
+Want me to add a modal step (e.g., “Send welcome email?”) to exercise the HITL Approve/Reject flow too?
+
