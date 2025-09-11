@@ -1,0 +1,156 @@
+# Watchdog Configuration
+# Settings for the stuck-screen watchdog system that detects and handles frozen UI states
+# during browser automation testing.
+
+watchdog:
+  # Global enable/disable flag for watchdog monitoring
+  enabled: true
+  
+  # Timeout threshold in seconds before considering UI state "stuck"
+  # Default: 12 seconds provides good balance between detection speed and false positives
+  timeout_seconds: 12.0
+  
+  # Maximum number of recovery attempts before giving up on a stuck state
+  # Each recovery attempt will try all configured strategies in order
+  max_recovery_attempts: 3
+  
+  # How often (in seconds) to check for state changes during monitoring
+  # Lower values = more responsive detection but higher CPU usage
+  check_interval: 2.0
+  
+  # Recovery strategies to try when stuck state is detected (in priority order)
+  # Available strategies:
+  #   - back_navigation: Try browser back() to return to previous state
+  #   - page_reload: Reload current page to refresh state  
+  #   - graceful_continuation: Log warning and continue with next step
+  #   - step_replanning: Re-analyze page and regenerate action plan (requires executor integration)
+  #   - timeout_failure: Mark as failed (should typically be last)
+  recovery_strategies:
+    - "back_navigation"
+    - "page_reload"
+    - "graceful_continuation"
+    - "timeout_failure"
+  
+  # State indicators to monitor for change detection
+  # Available indicators:
+  #   - dom_hash: Hash of DOM structure to detect content changes (most reliable)
+  #   - request_count: Count of network requests to detect activity (very reliable)
+  #   - pixel_signature: Visual page signature to detect rendering changes (less reliable, disabled by default)
+  state_indicators:
+    - "dom_hash"
+    - "request_count"
+    # Pixel signature disabled by default due to potential reliability issues
+    # - "pixel_signature"
+  
+  # Whether to capture screenshots during stuck state detection for debugging
+  capture_screenshots: true
+  
+  # Logging level for watchdog operations (DEBUG, INFO, WARNING, ERROR)
+  log_level: "INFO"
+  
+  # DOM hash generation settings
+  dom_hash_depth: 3  # How deep to traverse DOM tree for hash generation
+  
+  # Visual signature settings  
+  pixel_sample_regions: 9  # Number of regions to sample for visual signature
+  
+  # Advanced settings
+  advanced:
+    # Whether to enable detailed state change logging for debugging
+    verbose_state_logging: false
+    
+    # Minimum time (seconds) a state must persist before being considered for comparison
+    # Helps avoid false positives from very brief intermediate states
+    state_stabilization_time: 0.5
+    
+    # Whether to use request timing in addition to count for network activity detection
+    track_request_timing: false
+    
+    # Custom recovery strategy settings
+    recovery_settings:
+      # How long to wait (seconds) after each recovery attempt before re-checking state
+      post_recovery_wait: 3.0
+      
+      # Whether to reset request counters after successful recovery
+      reset_counters_on_recovery: true
+      
+      # For back navigation: whether to wait for networkidle after going back
+      back_navigation_wait_networkidle: true
+      
+      # For page reload: timeout in milliseconds for reload operation
+      page_reload_timeout: 15000
+
+# Environment-specific overrides
+environments:
+  development:
+    watchdog:
+      # More lenient settings for development
+      timeout_seconds: 15.0
+      log_level: "DEBUG"
+      advanced:
+        verbose_state_logging: true
+  
+  staging:
+    watchdog:
+      # Balanced settings for staging
+      timeout_seconds: 12.0
+      max_recovery_attempts: 2
+  
+  production:
+    watchdog:
+      # More aggressive settings for production
+      timeout_seconds: 10.0
+      max_recovery_attempts: 2
+      capture_screenshots: false  # Disable for performance in production
+
+# Testing configurations for different scenarios
+test_scenarios:
+  fast_tests:
+    watchdog:
+      timeout_seconds: 8.0
+      check_interval: 1.0
+      max_recovery_attempts: 2
+      recovery_strategies:
+        - "page_reload"
+        - "graceful_continuation"
+  
+  slow_ui_tests:
+    watchdog:
+      timeout_seconds: 20.0
+      check_interval: 3.0
+      state_indicators:
+        - "dom_hash"
+        - "pixel_signature"  # Skip request count for slow UIs
+  
+  network_intensive:
+    watchdog:
+      timeout_seconds: 15.0
+      state_indicators:
+        - "dom_hash"
+        - "request_count"  # Focus on network activity
+      advanced:
+        track_request_timing: true
+
+# Integration settings
+integration:
+  # Evidence collection settings
+  evidence:
+    # Whether to capture full page state snapshots during stuck detection
+    capture_full_state: true
+    
+    # Whether to log state comparison details to evidence
+    log_state_comparisons: false
+    
+    # Prefix for watchdog-related evidence artifacts
+    artifact_prefix: "watchdog"
+  
+  # Control room integration settings
+  control_room:
+    # Whether to send watchdog status updates to control room
+    send_status_updates: true
+    
+    # Whether to send recovery attempt notifications
+    notify_recovery_attempts: true
+    
+    # How often (seconds) to send watchdog health checks to control room
+    health_check_interval: 30.0

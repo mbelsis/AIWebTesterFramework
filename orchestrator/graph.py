@@ -32,7 +32,7 @@ class TestGraph:
 
             # Setup browser context with proper cleanup tracking
             from browser.context import create_context
-            playwright_instance, browser, context, page = await create_context(
+            playwright_instance, browser, context, page, network_tracker, state_capture = await create_context(
                 headful=self.headful, 
                 artifacts_dir=self.artifacts_dir,
                 env_config=env

@@ -18,6 +18,25 @@ except ImportError:
     def get_redactor():
         return None
 
+# Import watchdog utilities for stuck-screen detection and recovery
+try:
+    from utils.watchdog import Watchdog, RecoveryStrategy
+    WATCHDOG_AVAILABLE = True
+except ImportError:
+    WATCHDOG_AVAILABLE = False
+    
+    class Watchdog:
+        def __init__(self, *args, **kwargs):
+            pass
+        async def start_monitoring(self, *args, **kwargs):
+            pass
+        async def stop_monitoring(self):
+            pass
+        def track_network_request(self, *args):
+            pass
+        def is_monitoring(self):
+            return False
+
 logger = logging.getLogger(__name__)
 
 class Step:
@@ -48,6 +67,16 @@ class Executor:
                 logger.warning(f"Failed to initialize redactor in executor: {e}")
                 self.redactor = None
         
+        # Initialize watchdog if available
+        self.watchdog = None
+        if WATCHDOG_AVAILABLE:
+            try:
+                self.watchdog = Watchdog(sink=self.sink)
+                logger.info("Watchdog system initialized for stuck-screen detection")
+            except Exception as e:
+                logger.warning(f"Failed to initialize watchdog in executor: {e}")
+                self.watchdog = None
+        
         # Setup browser event listeners
         self.page.on("console", self._on_console)
         self.page.on("request", self._on_request)
@@ -69,6 +98,10 @@ class Executor:
         ))
 
     def _on_request(self, req):
+        # Track request with watchdog if available
+        if self.watchdog:
+            self.watchdog.track_network_request("request")
+            
         if not self.cr: return
         
         # Apply redaction to request URL and method
@@ -84,6 +117,10 @@ class Executor:
         ))
 
     def _on_response(self, resp):
+        # Track response with watchdog if available
+        if self.watchdog:
+            self.watchdog.track_network_request("response")
+            
         if not self.cr: return
         
         # Apply redaction to response URL
@@ -114,7 +151,7 @@ class Executor:
             await asyncio.sleep(0.05)
 
     async def run_step(self, idx: int, step_data: Dict[str, Any], base_url: str = ""):
-        """Execute a single test step"""
+        """Execute a single test step with watchdog monitoring"""
         step = Step(step_data)
         self._step_active = True
         
@@ -125,6 +162,16 @@ class Executor:
             await self.cr.send_step(self.run_id, idx, step.title, "executing")
         
         thumb_task = asyncio.create_task(self._thumb_loop()) if self.cr else None
+        
+        # Start watchdog monitoring if available
+        watchdog_monitoring = False
+        if self.watchdog:
+            try:
+                await self.watchdog.start_monitoring(self.page, self.context, self.run_id)
+                watchdog_monitoring = True
+                logger.debug(f"Watchdog monitoring started for step {idx}: {step.title}")
+            except Exception as e:
+                logger.warning(f"Failed to start watchdog monitoring for step {idx}: {e}")
 
         try:
             # Execute the step based on action type
@@ -155,8 +202,16 @@ class Executor:
                 await self.cr.send_step(self.run_id, idx, step.title, "passed")
 
         except Exception as e:
+            # Check if this was a watchdog-detected stuck state
+            is_stuck_state = self.watchdog and not self.watchdog.is_monitoring() and hasattr(e, '__cause__')
+            
             # Log failed step and capture screenshot
-            self.sink.log_event("step_failed", {"index": idx, "title": step.title, "error": str(e)})
+            self.sink.log_event("step_failed", {
+                "index": idx, 
+                "title": step.title, 
+                "error": str(e),
+                "stuck_state_detected": is_stuck_state
+            })
             
             try:
                 screenshot = await self.page.screenshot()
@@ -171,6 +226,14 @@ class Executor:
                 await self.cr.send_step(self.run_id, idx, step.title, "failed", str(e))
             raise
         finally:
+            # Stop watchdog monitoring
+            if watchdog_monitoring and self.watchdog:
+                try:
+                    await self.watchdog.stop_monitoring()
+                    logger.debug(f"Watchdog monitoring stopped for step {idx}")
+                except Exception as e:
+                    logger.warning(f"Error stopping watchdog monitoring: {e}")
+            
             self._step_active = False
             if thumb_task:
                 thumb_task.cancel()
