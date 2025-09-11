@@ -49,6 +49,37 @@ def control_room():
     cr.start()
 
 @app.command()
+def generate(
+    url: str = typer.Argument(..., help="URL to analyze and generate test plan for"),
+    description: str = typer.Option("", help="Description of what to test"),
+    output_dir: Path = typer.Option(Path("examples"), help="Output directory for generated files"),
+    headful: bool = typer.Option(False, help="Show browser during analysis"),
+    interactive: bool = typer.Option(False, help="Interactive mode with prompts")
+):
+    """Generate test plan from URL using AI analysis."""
+    async def _generate():
+        from orchestrator.test_plan_generator import TestPlanGenerator
+        generator = TestPlanGenerator()
+        
+        if interactive:
+            result = await generator.interactive_generate(url)
+        else:
+            print(f"🔍 Analyzing {url}...")
+            result = await generator.generate_from_url(
+                url=url,
+                test_description=description, 
+                output_dir=str(output_dir),
+                headful=headful
+            )
+            
+            print(f"✅ Generated test plan: {result['plan_file']}")
+            print(f"✅ Generated environment: {result['env_file']}")
+            print(f"\n🏃 Run your test:")
+            print(f"python -m cli.main run --plan {result['plan_file']} --env {result['env_file']} --control-room")
+    
+    asyncio.run(_generate())
+
+@app.command()
 def mock_app():
     """Start the mock demo application."""
     import uvicorn

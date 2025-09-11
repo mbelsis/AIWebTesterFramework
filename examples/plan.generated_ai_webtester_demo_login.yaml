@@ -1,0 +1,78 @@
+name: "AI Generated Test - Login Functionality"
+description: "Auto-generated comprehensive test plan for login page functionality using AI analysis"
+
+steps:
+  - title: "Navigate to login page"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/login"
+
+  - title: "Verify login form is visible"
+    action: "verify"
+    verification:
+      selector: ".login-form"
+
+  - title: "Fill username field"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "testuser"
+
+  - title: "Fill password field"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "testpass"
+
+  - title: "Fill domain field (optional)"
+    action: "fill"
+    target: "#domain"
+    data:
+      value: "demo.local"
+
+  - title: "Submit login form"
+    action: "submit"
+    target: "button[type='submit']"
+
+  - title: "Verify successful redirect"
+    action: "verify"
+    verification:
+      text: "Create New Employee"
+
+  - title: "Verify login was successful (check URL)"
+    action: "verify"
+    verification:
+      selector: ".form-container"
+
+# AI-Generated Test Variations
+  - title: "Test invalid login - wrong password"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/login"
+
+  - title: "Fill username with valid data"
+    action: "fill"
+    target: "#username"
+    data:
+      value: "testuser"
+
+  - title: "Fill password with invalid data"
+    action: "fill"
+    target: "#password"
+    data:
+      value: "wrongpassword"
+
+  - title: "Submit invalid login form"
+    action: "submit"
+    target: "button[type='submit']"
+
+  - title: "Test empty form submission"
+    action: "navigate"
+    target: "http://127.0.0.1:5000/login"
+
+  - title: "Attempt to submit empty form"
+    action: "submit"
+    target: "button[type='submit']"
+
+  - title: "Verify form validation (HTML5 required fields)"
+    action: "verify"
+    verification:
+      selector: "#username:invalid"
