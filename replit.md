@@ -12,12 +12,12 @@ AI WebTester is a comprehensive Python framework for automated web application t
 - **Mock Demo App**: FastAPI-based test application for framework validation
 
 ## Recent Changes (2025-09-11)
-- Implemented robust resource cleanup with proper browser/context/playwright teardown
-- Enhanced evidence collection with step-level logging and failure screenshots
-- Fixed port consistency issues (standardized on port 5000)
-- Added environment configuration support for timeouts and browser settings
-- Improved error handling with resilient waits for DOM elements
-- Integrated OpenAI API key for future AI-powered testing capabilities
+- 🧠 **Revolutionary AI Test Generation**: Implemented breakthrough AI-powered test plan generation that automatically creates comprehensive YAML tests from any webpage URL
+- 📄 **Comprehensive Documentation Updates**: Updated README.md, Technical_Specs.md, and setup.sh with detailed AI generation examples and real-time monitoring instructions
+- 🤖 **OpenAI Integration**: Added PageAnalyzer and TestPlanGenerator classes with GPT-5 integration for intelligent test creation
+- 🔍 **Webpage Analysis**: BeautifulSoup integration for HTML parsing and interactive element detection
+- ⚡ **CLI Enhancement**: Added 'generate' command with interactive and headful modes for AI test creation
+- 🎯 **Sample Generation**: Created demonstration AI-generated test plans showing the revolutionary capability
 
 ## User Preferences
 - Prefer comprehensive error handling and logging
