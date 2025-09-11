@@ -1,6 +1,6 @@
 name: CI
 
-on: 
+on:
   push:
     branches: [ main, develop ]
   pull_request:
@@ -12,63 +12,275 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
+      fail-fast: false
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          
-      - name: Install system dependencies
-        run: |
-          # System dependencies are handled by playwright install --with-deps
-          echo "System dependencies will be installed by Playwright"
-            
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip uv
-          uv pip install --system -e ".[dev]"
-          
-      - name: Install Playwright browsers
-        run: |
-          python -m playwright install --with-deps chromium
-          
-      - name: Run linting and type checks
-        run: |
-          python -m black --check .
-          # python -m mypy .  # Enable when mypy is configured
-          
-      - name: Start mock application
-        run: |
-          python -m cli.main mock-app &
-          sleep 10
-          curl -f http://127.0.0.1:5000/login || exit 1
-          
-      - name: Run smoke test
-        if: ${{ secrets.OPENAI_API_KEY != '' }}
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+        enable-cache: true
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-${{ matrix.python-version }}-
+          ${{ runner.os }}-uv-
+
+    - name: Install dependencies
+      run: |
+        uv pip install --system -e ".[dev]"
+
+    - name: Install Playwright browsers
+      run: |
+        playwright install --with-deps chromium
+
+    - name: Start mock application in background
+      run: |
+        cd mock_app && python -m uvicorn app:app --host 127.0.0.1 --port 5000 &
+        echo $! > ../mock_app.pid
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Wait for mock app to be ready
+      run: |
+        timeout=60
+        while [ $timeout -gt 0 ]; do
+          if curl -s http://127.0.0.1:5000/health > /dev/null; then
+            echo "Mock app is ready"
+            break
+          fi
+          echo "Waiting for mock app to start... ($timeout seconds left)"
+          sleep 2
+          timeout=$((timeout-2))
+        done
+        if [ $timeout -eq 0 ]; then
+          echo "Mock app failed to start within 60 seconds"
+          exit 1
+        fi
+
+    - name: Verify mock app health
+      run: |
+        curl -f http://127.0.0.1:5000/health || (echo "Health check failed" && exit 1)
+
+    - name: Run demo employee creation test (headless)
+      run: |
+        python -m cli.main run \
+          --plan examples/plan.demo_create_employee.yaml \
+          --env examples/env.local.yaml \
+          --no-headful \
+          --artifacts-dir artifacts/demo-test
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        # OpenAI API key is optional for basic tests
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    - name: Run AI-powered test generation (if API key available)
+      if: ${{ secrets.OPENAI_API_KEY != '' }}
+      run: |
+        python -m cli.main generate \
+          --url http://127.0.0.1:5000 \
+          --description "Basic login and employee creation flow" \
+          --output-dir artifacts/generated-tests \
+          --no-headful
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      continue-on-error: true
+
+    - name: Run generated test (if available)
+      if: ${{ secrets.OPENAI_API_KEY != '' }}
+      run: |
+        if [ -f artifacts/generated-tests/plan_*.yaml ] && [ -f artifacts/generated-tests/env_*.yaml ]; then
+          plan_file=$(ls artifacts/generated-tests/plan_*.yaml | head -n1)
+          env_file=$(ls artifacts/generated-tests/env_*.yaml | head -n1)
+          echo "Running generated test: $plan_file with $env_file"
           python -m cli.main run \
-            --plan examples/plan.demo_create_employee.yaml \
-            --env examples/env.local.yaml \
-            --headful false \
-            --artifacts-dir ./test-artifacts
+            --plan "$plan_file" \
+            --env "$env_file" \
+            --no-headful \
+            --artifacts-dir artifacts/generated-test-run
+        else
+          echo "No generated test files found, skipping"
+        fi
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      continue-on-error: true
+
+    - name: Install requests for API tests
+      run: |
+        uv pip install --system requests
+
+    - name: Run basic API tests (Python unit tests)
+      run: |
+        python -c "
+        import requests
+        import sys
+        
+        try:
+            # Test health endpoint
+            r = requests.get('http://127.0.0.1:5000/health', timeout=10)
+            assert r.status_code == 200
+            assert r.json()['status'] == 'ok'
+            print('✅ Health check passed')
             
-      - name: Upload test artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-artifacts-${{ matrix.python-version }}
-          path: test-artifacts/
-          retention-days: 7
-          if-no-files-found: ignore
-          
-      - name: Check for test failures
-        if: failure()
-        run: |
-          echo "Tests failed. Check artifacts for details."
-          ls -la test-artifacts/ || true
+            # Test login page
+            r = requests.get('http://127.0.0.1:5000/login', timeout=10)
+            assert r.status_code == 200
+            print('✅ Login page accessible')
+            
+            # Test employees API
+            r = requests.get('http://127.0.0.1:5000/api/employees', timeout=10)
+            assert r.status_code == 200
+            assert 'employees' in r.json()
+            print('✅ Employees API working')
+            
+            print('All API tests passed!')
+        except Exception as e:
+            print(f'❌ API test failed: {e}')
+            sys.exit(1)
+        "
+
+    - name: Stop mock application
+      if: always()
+      run: |
+        if [ -f mock_app.pid ]; then
+          kill $(cat mock_app.pid) || true
+          rm mock_app.pid
+        fi
+        # Kill any remaining uvicorn processes
+        pkill -f "uvicorn app:app" || true
+
+    - name: Collect test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-artifacts-py${{ matrix.python-version }}
+        path: |
+          artifacts/
+          **/*.log
+          **/*.har
+          **/*.zip
+          **/screenshots/
+          **/video/
+        retention-days: 30
+        if-no-files-found: ignore
+
+    - name: Upload test results summary
+      if: always()
+      run: |
+        echo "## Test Results Summary" > test-summary.md
+        echo "- Python Version: ${{ matrix.python-version }}" >> test-summary.md
+        echo "- Mock App Health: $(curl -s http://127.0.0.1:5000/health 2>/dev/null && echo 'OK' || echo 'FAILED')" >> test-summary.md
+        
+        if [ -d artifacts/demo-test ]; then
+          echo "- Demo Test: Executed" >> test-summary.md
+          if [ -f artifacts/demo-test/run.json ]; then
+            status=$(cat artifacts/demo-test/run.json | python -c "import sys, json; print(json.load(sys.stdin).get('status', 'unknown'))" 2>/dev/null || echo 'unknown')
+            echo "  - Status: $status" >> test-summary.md
+          fi
+        else
+          echo "- Demo Test: Not executed" >> test-summary.md
+        fi
+        
+        if [ -d artifacts/generated-tests ] && [ "${{ secrets.OPENAI_API_KEY }}" != "" ]; then
+          echo "- AI Test Generation: Executed" >> test-summary.md
+        else
+          echo "- AI Test Generation: Skipped (no API key)" >> test-summary.md
+        fi
+        
+        echo "- Artifacts Directory:" >> test-summary.md
+        find artifacts/ -type f 2>/dev/null | head -20 | sed 's/^/  - /' >> test-summary.md || echo "  - No artifacts found" >> test-summary.md
+        
+        cat test-summary.md
+
+    - name: Check for test failures
+      run: |
+        # Check if any critical test artifacts indicate failure
+        if [ -f artifacts/demo-test/run.json ]; then
+          status=$(cat artifacts/demo-test/run.json | python -c "import sys, json; print(json.load(sys.stdin).get('status', 'unknown'))" 2>/dev/null)
+          if [ "$status" = "failed" ]; then
+            echo "❌ Demo test failed"
+            exit 1
+          elif [ "$status" = "passed" ]; then
+            echo "✅ Demo test passed"
+          else
+            echo "⚠️ Demo test status unknown: $status"
+          fi
+        else
+          echo "❌ No demo test results found"
+          exit 1
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+        enable-cache: true
+
+    - name: Install dependencies
+      run: |
+        uv pip install --system -e ".[dev]"
+
+    - name: Run black (code formatting check)
+      run: |
+        python -m black --check --diff .
+
+    - name: Run ruff (linting)
+      run: |
+        python -m ruff check .
+
+    - name: Run mypy (type checking)
+      run: |
+        python -m mypy orchestrator/ cli/ browser/ evidence/ mock_app/
+      continue-on-error: true  # Type checking is optional for now
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+
+    - name: Install dependencies
+      run: |
+        uv pip install --system -e .
+        uv pip install --system safety bandit
+
+    - name: Run safety check (dependency vulnerabilities)
+      run: |
+        python -m safety check --json || true
+
+    - name: Run bandit (security linting)
+      run: |
+        python -m bandit -r orchestrator/ cli/ browser/ evidence/ mock_app/ -f json || true
