@@ -34,8 +34,15 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
    ./setup.sh
    ```
 
-3. **Set your OpenAI API key**:
+3. **Configure environment variables**:
    ```bash
+   # Copy the sample environment file
+   cp env.sample .env
+   
+   # Edit .env and add your OpenAI API key
+   # OPENAI_API_KEY=your-actual-openai-api-key-here
+   
+   # Or set directly in your shell
    export OPENAI_API_KEY="your-api-key-here"
    ```
 
@@ -186,10 +193,14 @@ playwright install-deps
 ### Step 5: Set Environment Variables
 
 ```bash
-# Set OpenAI API key for AI-powered features
+# Option 1: Use environment file (recommended)
+cp env.sample .env
+# Then edit .env file and set: OPENAI_API_KEY=your-actual-openai-api-key-here
+
+# Option 2: Set directly in shell
 export OPENAI_API_KEY="your-actual-openai-api-key-here"
 
-# Add to your shell profile for persistence (.bashrc, .zshrc, etc.)
+# Option 3: Add to your shell profile for persistence
 echo 'export OPENAI_API_KEY="your-actual-openai-api-key-here"' >> ~/.bashrc
 source ~/.bashrc
 ```
