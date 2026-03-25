@@ -9,11 +9,12 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger(__name__)
 
 class TestGraph:
-    def __init__(self, artifacts_dir: str, headful: bool, control_room, run_id: str):
+    def __init__(self, artifacts_dir: str, headful: bool, control_room, run_id: str, hook_manager=None):
         self.artifacts_dir = artifacts_dir
         self.headful = headful
         self.cr = control_room
         self.run_id = run_id
+        self.hook_manager = hook_manager
 
     async def run(self, plan_path: str, env_path: str) -> Dict[str, Any]:
         """Execute the test plan"""
@@ -50,7 +51,7 @@ class TestGraph:
 
             # Setup executor
             from orchestrator.executor import Executor
-            executor = Executor(page, context, sink, self.cr, self.run_id)
+            executor = Executor(page, context, sink, self.cr, self.run_id, hook_manager=self.hook_manager)
 
             if self.cr:
                 await self.cr.send_status(self.run_id, "running", "Executing test plan")

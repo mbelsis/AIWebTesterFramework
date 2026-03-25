@@ -1,6 +1,4 @@
-import asyncio
 import yaml
-import json
 import time
 import hashlib
 from pathlib import Path
@@ -9,9 +7,10 @@ from orchestrator.page_analyzer import PageAnalyzer
 from data_gen.faker_util import get_run_specific_faker
 
 class TestPlanGenerator:
-    def __init__(self, openai_api_key: Optional[str] = None, run_id: Optional[str] = None):
-        self.analyzer = PageAnalyzer(openai_api_key)
+    def __init__(self, openai_api_key: Optional[str] = None, run_id: Optional[str] = None, hook_manager=None):
+        self.analyzer = PageAnalyzer(openai_api_key, hook_manager=hook_manager)
         self.run_id = run_id or self._generate_run_id()
+        self.hook_manager = hook_manager
 
     async def generate_from_url(
         self, 
@@ -35,7 +34,7 @@ class TestPlanGenerator:
         test_plan = await self.analyzer.generate_test_plan(page_analysis, test_description)
         
         # Generate environment config with seeded data
-        env_config = self._generate_environment_config(url, page_analysis)
+        env_config = await self._generate_environment_config(url, page_analysis)
         
         # Save files
         plan_filename, env_filename = self._save_files(
@@ -49,7 +48,7 @@ class TestPlanGenerator:
             "elements_found": len(page_analysis.get('elements', []))
         }
 
-    def _generate_environment_config(self, url: str, page_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_environment_config(self, url: str, page_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Generate environment configuration with seeded Faker data"""
         
         from urllib.parse import urlparse
@@ -170,15 +169,29 @@ class TestPlanGenerator:
             }
         
         # Add form data for generic form fields
+        form_fields = []
         if page_analysis.get('structure', {}).get('forms'):
-            form_fields = []
             for form in page_analysis['structure']['forms']:
                 form_fields.extend([field['name'] for field in form.get('fields', [])])
             
-            if form_fields:
-                env_config["form_data"] = faker.form_data(form_fields)
-        
+        if form_fields:
+            env_config["form_data"] = faker.form_data(form_fields)
+
+        if self.hook_manager:
+            env_config = await self._transform_env_config(env_config, page_analysis, url)
+         
         return env_config
+
+    async def _transform_env_config(self, env_config: Dict[str, Any], page_analysis: Dict[str, Any], url: str) -> Dict[str, Any]:
+        return await self.hook_manager.transform(
+            "after_generate_env",
+            env_config,
+            {
+                "page_analysis": page_analysis,
+                "url": url,
+                "run_id": self.run_id,
+            },
+        )
 
     def _save_files(
         self,

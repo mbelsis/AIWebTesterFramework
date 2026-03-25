@@ -739,11 +739,12 @@ class ExplorationOrchestrator:
     """Top-level coordinator: authenticate → crawl → generate tests → execute → report."""
 
     def __init__(self, artifacts_dir: str, headful: bool, run_id: str,
-                 control_room=None):
+                 control_room=None, hook_manager=None):
         self.artifacts_dir = artifacts_dir
         self.headful = headful
         self.run_id = run_id
         self.cr = control_room
+        self.hook_manager = hook_manager
         self.config = _load_explorer_config()
 
     async def explore(
@@ -836,7 +837,7 @@ class ExplorationOrchestrator:
             # ── Phase 5: Test Execution ───────────────────────────────────
             if execute_tests and result.test_plans:
                 from orchestrator.executor import Executor
-                executor = Executor(page, context, sink, self.cr, self.run_id)
+                executor = Executor(page, context, sink, self.cr, self.run_id, hook_manager=self.hook_manager)
 
                 for plan in result.test_plans:
                     plan_result = await self._execute_plan(executor, plan, base_url, sink)
@@ -905,7 +906,7 @@ class ExplorationOrchestrator:
         provider = OpenAIProvider()
         if not provider.is_available():
             logger.warning("OpenAI not available — skipping AI test generation")
-            return self._generate_fallback_tests(app_map)
+            return await self._generate_fallback_tests(app_map)
 
         plans = []
         for key, page in app_map.pages.items():
@@ -959,6 +960,12 @@ Return JSON with this structure:
     }}
   ]
 }}"""
+        if self.hook_manager:
+            prompt = await self.hook_manager.transform(
+                "before_ai_prompt",
+                prompt,
+                {"page": page, "run_id": self.run_id, "base_url": page.url},
+            )
 
         messages = [
             {"role": "system", "content": "You are a QA engineer. Generate practical, executable test steps. Return valid JSON."},
@@ -970,10 +977,17 @@ Return JSON with this structure:
         )
 
         if response.success and response.json_data:
-            return response.json_data
+            plan = response.json_data
+            if self.hook_manager:
+                plan = await self.hook_manager.transform(
+                    "after_generate",
+                    plan,
+                    {"generation_source": "explore_ai", "page": page, "run_id": self.run_id},
+                )
+            return plan
         return None
 
-    def _generate_fallback_tests(self, app_map: AppMap) -> List[Dict[str, Any]]:
+    async def _generate_fallback_tests(self, app_map: AppMap) -> List[Dict[str, Any]]:
         """Basic test generation without AI — just navigate and verify."""
         plans = []
         for key, page in app_map.pages.items():
@@ -999,6 +1013,17 @@ Return JSON with this structure:
                 "page_url": page.url,
                 "steps": steps,
             })
+        if self.hook_manager:
+            transformed = []
+            for plan in plans:
+                transformed.append(
+                    await self.hook_manager.transform(
+                        "after_generate",
+                        plan,
+                        {"generation_source": "explore_fallback", "run_id": self.run_id},
+                    )
+                )
+            return transformed
         return plans
 
     # ── Test execution ────────────────────────────────────────────────────

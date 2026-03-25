@@ -1,0 +1,47 @@
+pipeline {
+  agent any
+
+  environment {
+    OPENAI_API_KEY = credentials('openai-api-key')
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install Dependencies') {
+      steps {
+        script {
+          if (isUnix()) {
+            sh 'python3 -m pip install -e ".[dev]"'
+            sh 'playwright install --with-deps chromium'
+          } else {
+            bat 'python -m pip install -e ".[dev]"'
+            bat 'playwright install chromium'
+          }
+        }
+      }
+    }
+
+    stage('Run AI WebTester') {
+      steps {
+        script {
+          if (isUnix()) {
+            sh 'python3 -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml'
+          } else {
+            bat 'python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml'
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'artifacts/**', fingerprint: true, allowEmptyArchive: true
+    }
+  }
+}

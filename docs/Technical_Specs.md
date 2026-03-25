@@ -21,7 +21,7 @@ AI WebTester is a comprehensive Python-based framework for automated web applica
 - **Typer**: Command-line interface framework for CLI commands
 
 ##### Browser Automation
-- **Playwright**: Browser automation library supporting Chromium, Firefox, and WebKit
+- **Playwright**: Browser automation library used in this project with Chromium-based execution
 - **Async/Await**: Asynchronous programming for concurrent browser operations
 
 ##### AI & Data Processing  
@@ -117,7 +117,7 @@ The framework now includes breakthrough AI-powered test plan generation that eli
 5. **Page Classification**: AI determines page type (login, registration, dashboard, etc.)
 
 #### Step 2: AI-Powered Analysis
-1. **OpenAI Integration**: Page content and structure sent to OpenAI GPT-5 model
+1. **OpenAI Integration**: Page content and structure sent to the configured OpenAI model
 2. **Intelligent Test Generation**: AI generates comprehensive test scenarios based on:
    - Detected forms and input fields
    - Interactive elements and user flows
@@ -148,7 +148,7 @@ The framework now includes breakthrough AI-powered test plan generation that eli
    
 2. **Browser Context Creation**:
    - Playwright instance launched
-   - Browser (Chromium/Firefox/WebKit) started in headful/headless mode
+   - Chromium browser started in headful/headless mode
    - Context configured with video recording and tracing enabled
    - Page instance created for automation
 
@@ -175,11 +175,8 @@ The framework now includes breakthrough AI-powered test plan generation that eli
    - **Status Update**: Results sent to Control Room and evidence sink
 
 #### Step 4: Active AI Integration Points
-1. **Intelligent Element Selection**: OpenAI API identifies optimal CSS selectors for robust automation
-2. **Content Verification**: AI validates expected vs actual page content during test execution
-3. **Adaptive Test Logic**: Dynamic test step generation based on real-time page analysis
-4. **Error Analysis**: AI-powered failure diagnosis with actionable suggestions
-5. **Test Plan Generation**: Automatic comprehensive test creation from URL analysis (primary feature)
+1. **Test Plan Generation**: OpenAI-assisted test plan creation from page analysis
+2. **Fallback Generation**: Rule-based fallback plan creation when OpenAI is unavailable
 
 #### Step 5: Cleanup & Artifact Generation
 1. **Browser Cleanup**: 
@@ -330,14 +327,15 @@ settings:
 - **Selector Generation**: Creates robust CSS selectors for element targeting
 
 **TestPlanGenerator Class** (`orchestrator/test_plan_generator.py`):
-- **AI Integration**: Connects with OpenAI GPT-5 for intelligent test plan creation
+- **AI Integration**: Connects with the configured OpenAI provider for test plan creation
 - **YAML Generation**: Produces complete test plans with realistic scenarios
 - **Environment Configuration**: Creates matching environment configs with proper settings
 - **File Management**: Saves generated files with organized naming conventions
 - **Interactive Mode**: Provides guided user experience for test generation
 
 #### AI Model Integration
-- **Model**: OpenAI GPT-5 (latest available model as of August 2025)
+- **Default Model**: `gpt-4o-mini`
+- **Supported Models in Code**: `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4o`, `gpt-4`
 - **Input**: Page structure, detected elements, user requirements
 - **Output**: Comprehensive JSON test plan converted to YAML format
 - **Capabilities**: 
@@ -353,18 +351,25 @@ settings:
 
 **GitHub Actions Workflow** (`.github/workflows/ci.yml`):
 - **Multi-job Strategy**: 3 parallel jobs (test, lint, security) for comprehensive validation
-- **Matrix Testing**: Python 3.11 and 3.12 across multiple environments
+- **Matrix Testing**: Python 3.11 and 3.12 in the test job
 - **Browser Automation**: Full Playwright installation with Chromium browser and system dependencies
 - **Mock App Service**: Background mock application with health checks and proper cleanup
-- **AI Integration**: OpenAI test generation with graceful fallback for missing API keys
+- **AI Integration**: OpenAI generation step with `continue-on-error: true`; generator fallback exists in application code
 - **Artifact Collection**: Complete evidence gathering with 30-day retention
-- **Security Scanning**: Dependency vulnerability analysis and static security checks
+- **Security Scanning**: Workflow runs Safety and Bandit to validate the framework's own dependencies and Python code
+
+See [CI_CD_Pipeline.md](/C:/Users/mbelsis/Documents/GitHub/AIWebTesterFramework/docs/GitHub_Actions/CI_CD_Pipeline.md) for the detailed GitHub Actions pipeline documentation and the explanation of why the executable workflow must remain under `.github/workflows/`.
 
 **Key Features**:
-- **Fail-Safe Design**: Continues testing even if individual components fail
-- **Secret Management**: Proper OpenAI API key handling with fork-safe fallbacks
+- **Fail-Safe Design**: The AI generation step does not fail the entire job
+- **Secret Management**: OpenAI API key is passed from GitHub Actions secrets when available
 - **Performance Optimized**: Uses `uv pip` with caching for fast dependency installation
 - **Cross-Platform**: Ubuntu latest with comprehensive browser dependency support
+
+**Security Job Scope**:
+- Validates the safety of AI WebTester itself
+- Protects users who run the framework in CI with credentials, artifacts, and internal URLs
+- Does not assess the security posture of the application under test
 
 ### 🔒 **Security Infrastructure**
 
@@ -385,9 +390,9 @@ settings:
 ### 🤖 **Modern AI Provider Architecture**
 
 **OpenAI Integration** (`providers/openai_provider.py`):
-- **Latest SDK**: OpenAI Responses API with structured JSON mode
-- **Retry Logic**: Exponential backoff with 90-second timeout and smart fallbacks
-- **Model Support**: GPT-4o-mini, GPT-4-Turbo, GPT-4o with proper parameter handling
+- **SDK Usage**: OpenAI Responses API with structured JSON mode
+- **Retry Logic**: Exponential backoff with 90-second timeout and fallback parsing
+- **Model Support**: `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4o`, `gpt-4`
 - **Error Resilience**: Graceful degradation when API unavailable
 - **Security Integration**: Input/output redaction for sensitive data protection
 
@@ -426,22 +431,22 @@ settings:
 
 ## Current Status & Implementation
 
-### Fully Implemented Features (Updated 2025)
-1. ✅ **AI Test Plan Generation**: Complete webpage analysis and test creation with modern OpenAI Responses API
-2. ✅ **Browser Automation**: Full Playwright integration with guaranteed video finalization and durability
+### Fully Implemented Features
+1. ✅ **AI Test Plan Generation**: Webpage analysis and OpenAI-assisted plan creation with rule-based fallback
+2. ✅ **Browser Automation**: Chromium Playwright integration with guaranteed video finalization and durability
 3. ✅ **Real-time Monitoring**: Control Room with live WebSocket communication and automatic port detection
 4. ✅ **Evidence Collection**: Comprehensive artifact generation with security redaction and guaranteed persistence
 5. ✅ **CLI Interface**: Complete command-line interface with seeded data generation and AI integration
 6. ✅ **OpenAI Integration**: Modern Responses API with JSON mode, retry logic, and security redaction
 7. ✅ **Multi-format Output**: YAML test plans and environment configurations with realistic faker data
-8. ✅ **CI/CD Pipeline**: GitHub Actions workflow with multi-Python testing and comprehensive validation
+8. ✅ **CI/CD Pipeline**: GitHub Actions workflow with multi-Python test coverage, linting, artifact collection, and framework security checks
 9. ✅ **Security Infrastructure**: Enterprise-grade data redaction across all framework components
 10. ✅ **Reliability Features**: Stuck-screen watchdog and automatic port conflict resolution
 11. ✅ **Test Data Management**: Seeded Faker with run-specific uniqueness and realistic data generation
 
 ### Future Enhancements
 1. **Control Room Frontend**: React/Vite dashboard for enhanced monitoring
-2. **Multi-browser Support**: Parallel testing across different browsers
+2. **Multi-browser Support**: Support for browsers beyond the current Chromium-based execution path
 3. **Report Generation**: PDF and HTML report generation with custom templates
 4. **Test Recording**: Record user actions to generate test plans
 5. **Visual Regression**: AI-powered visual comparison testing

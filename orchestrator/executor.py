@@ -2,6 +2,7 @@ import asyncio
 import time
 import json
 import logging
+import copy
 from typing import Dict, Any, Optional
 
 # Import redaction utilities for secure test execution logging
@@ -48,13 +49,14 @@ class Step:
         self.verification = data.get("verification", {})
 
 class Executor:
-    def __init__(self, page, context, sink, control_room, run_id: str):
+    def __init__(self, page, context, sink, control_room, run_id: str, hook_manager=None):
         self.page = page
         self.context = context
         self.sink = sink
         self.cr = control_room
         self.run_id = run_id
         self._step_active = False
+        self.hook_manager = hook_manager
         
         # Initialize redaction if available
         self.redactor = None
@@ -161,7 +163,16 @@ class Executor:
 
     async def run_step(self, idx: int, step_data: Dict[str, Any], base_url: str = ""):
         """Execute a single test step with watchdog monitoring"""
-        step = Step(step_data)
+        step_payload = copy.deepcopy(step_data)
+        hook_context = {
+            "step_index": idx,
+            "base_url": base_url,
+            "run_id": self.run_id,
+        }
+        if self.hook_manager:
+            step_payload = await self.hook_manager.transform("before_step", step_payload, hook_context)
+
+        step = Step(step_payload)
         self._step_active = True
         
         # Log step start to evidence
@@ -185,25 +196,41 @@ class Executor:
         try:
             # Execute the step based on action type
             target = self._resolve_target(step.target, base_url)
-            
-            if step.action == "navigate":
-                await self._navigate(target)
-            elif step.action == "click":
-                await self._click(target)
-            elif step.action == "fill":
-                await self._fill(target, step.data.get("value", ""))
-            elif step.action == "submit":
-                await self._submit(target)
-            elif step.action == "wait":
-                await self._wait(step.data.get("seconds", 1))
-            elif step.action == "verify":
-                await self._verify(step.verification)
-            else:
-                raise ValueError(f"Unknown action: {step.action}")
+            hook_context["resolved_target"] = target
+
+            handled_result = None
+            if self.hook_manager:
+                handled_result = await self.hook_manager.execute_step(step_payload, self, hook_context)
+             
+            if handled_result is None:
+                if step.action == "navigate":
+                    await self._navigate(target)
+                elif step.action == "click":
+                    await self._click(target)
+                elif step.action == "fill":
+                    await self._fill(target, step.data.get("value", ""))
+                elif step.action == "submit":
+                    await self._submit(target)
+                elif step.action == "wait":
+                    await self._wait(step.data.get("seconds", 1))
+                elif step.action == "verify":
+                    await self._verify(step.verification)
+                else:
+                    raise ValueError(f"Unknown action: {step.action}")
 
             # Log successful step
             self.sink.log_event("step_completed", {"index": idx, "title": step.title, "status": "passed"})
-            
+            if self.hook_manager:
+                result_payload = {
+                    "status": "passed",
+                    "index": idx,
+                    "title": step.title,
+                    "action": step.action,
+                    "target": target,
+                    "handled_by_hook": handled_result is not None,
+                }
+                await self.hook_manager.transform("after_step", result_payload, hook_context)
+             
             if self.cr:
                 await self.cr.send_log(
                     self.run_id, "info", "agent", f"Step {idx}: {step.title} completed", time.time()
@@ -233,6 +260,8 @@ class Executor:
             if self.cr:
                 await self.cr.send_log(self.run_id, "error", "agent", error_msg, time.time())
                 await self.cr.send_step(self.run_id, idx, step.title, "failed", str(e))
+            if self.hook_manager:
+                await self.hook_manager.notify("on_step_failure", step_payload, e, hook_context)
             raise
         finally:
             # Stop watchdog monitoring

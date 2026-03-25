@@ -7,6 +7,7 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from orchestrator.executor import Executor, Step
+from utils.hooks import HookManager
 
 
 # ── Step dataclass ────────────────────────────────────────────────────────────
@@ -35,18 +36,19 @@ class TestStep:
 
 # ── Executor helpers ──────────────────────────────────────────────────────────
 
-def _make_executor(page=None, context=None, sink=None, cr=None):
+def _make_executor(page=None, context=None, sink=None, cr=None, hook_manager=None):
     """Build an Executor with mocked dependencies."""
     if page is None:
         page = MagicMock()
-        page.on = MagicMock()  # prevent listener registration errors
+    page.on = MagicMock()  # prevent listener registration errors
+    page.evaluate = AsyncMock(return_value="")
     if context is None:
         context = MagicMock()
     if sink is None:
         sink = MagicMock()
         sink.log_event = MagicMock()
         sink.save_screenshot = MagicMock()
-    return Executor(page, context, sink, cr, run_id="test-run")
+    return Executor(page, context, sink, cr, run_id="test-run", hook_manager=hook_manager)
 
 
 class TestResolveTarget:
@@ -170,3 +172,53 @@ class TestRunStep:
         event_types = [call.args[0] for call in sink.log_event.call_args_list]
         assert "step_started" in event_types
         assert "step_completed" in event_types
+
+
+class TestHookedExecution:
+    @pytest.mark.asyncio
+    async def test_before_step_hook_can_rewrite_step(self):
+        class RewriteHook:
+            def before_step(self, step, context):
+                step["action"] = "fill"
+                step["target"] = "#email"
+                step["data"] = {"value": "hook@example.com"}
+                return step
+
+        page = AsyncMock()
+        ex = _make_executor(page=page, hook_manager=HookManager([RewriteHook()]))
+
+        await ex.run_step(0, {"title": "Hooked", "action": "custom_fill"}, "")
+
+        page.fill.assert_called_once_with("#email", "hook@example.com")
+
+    @pytest.mark.asyncio
+    async def test_execute_step_hook_can_handle_custom_action(self):
+        class CustomActionHook:
+            async def execute_step(self, step, executor, context):
+                if step.get("action") != "seed_login":
+                    return None
+                await executor._fill("#username", "alice")
+                return {"status": "passed", "handled_by": "CustomActionHook"}
+
+        page = AsyncMock()
+        ex = _make_executor(page=page, hook_manager=HookManager([CustomActionHook()]))
+
+        await ex.run_step(0, {"title": "Seed login", "action": "seed_login"}, "")
+
+        page.fill.assert_called_once_with("#username", "alice")
+
+    @pytest.mark.asyncio
+    async def test_failure_hook_runs_on_step_error(self):
+        failures = []
+
+        class FailureHook:
+            def on_step_failure(self, step, error, context):
+                failures.append((step["title"], str(error)))
+
+        page = AsyncMock()
+        ex = _make_executor(page=page, hook_manager=HookManager([FailureHook()]))
+
+        with pytest.raises(ValueError, match="Unknown action"):
+            await ex.run_step(0, {"title": "Bad", "action": "nope"}, "")
+
+        assert failures == [("Bad", "Unknown action: nope")]

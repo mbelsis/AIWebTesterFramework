@@ -5,19 +5,20 @@ Uses mocks to test the orchestration logic without needing a real browser.
 
 import pytest
 import yaml
-import json
 import tempfile
 import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from orchestrator.graph import TestGraph
+from orchestrator.graph import TestGraph as GraphRunner
 
 
 @pytest.fixture
 def work_dir():
-    """Create a temp directory that works on Windows."""
-    d = Path(tempfile.mkdtemp(prefix="aitest_"))
+    """Create a temp directory under the workspace."""
+    base = Path.cwd() / "tests" / ".tmp"
+    base.mkdir(parents=True, exist_ok=True)
+    d = Path(tempfile.mkdtemp(prefix="aitest_", dir=str(base)))
     yield d
     shutil.rmtree(d, ignore_errors=True)
 
@@ -57,7 +58,7 @@ def artifacts_dir(work_dir):
 
 class TestGraphLoadYaml:
     def test_loads_valid_yaml(self, plan_file, artifacts_dir):
-        graph = TestGraph(artifacts_dir, headful=False, control_room=None, run_id="test")
+        graph = GraphRunner(artifacts_dir, headful=False, control_room=None, run_id="test")
         data = graph._load_yaml(plan_file)
         assert data["name"] == "Test Plan"
         assert len(data["steps"]) == 1
@@ -65,12 +66,12 @@ class TestGraphLoadYaml:
     def test_raises_on_empty_yaml(self, work_dir, artifacts_dir):
         empty = work_dir / "empty.yaml"
         empty.write_text("")
-        graph = TestGraph(artifacts_dir, headful=False, control_room=None, run_id="test")
+        graph = GraphRunner(artifacts_dir, headful=False, control_room=None, run_id="test")
         with pytest.raises(ValueError, match="empty or invalid"):
             graph._load_yaml(str(empty))
 
     def test_raises_on_missing_file(self, artifacts_dir):
-        graph = TestGraph(artifacts_dir, headful=False, control_room=None, run_id="test")
+        graph = GraphRunner(artifacts_dir, headful=False, control_room=None, run_id="test")
         with pytest.raises(FileNotFoundError):
             graph._load_yaml("/nonexistent/path.yaml")
 
@@ -101,7 +102,7 @@ class TestGraphRun:
 
                 # Disable watchdog to avoid serialization issues with mock page
                 with patch("orchestrator.executor.WATCHDOG_AVAILABLE", False):
-                    graph = TestGraph(artifacts_dir, headful=False, control_room=None, run_id="test-run")
+                    graph = GraphRunner(artifacts_dir, headful=False, control_room=None, run_id="test-run")
                     result = await graph.run(plan_file, env_file)
 
         assert result is not None

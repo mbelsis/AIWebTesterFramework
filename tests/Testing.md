@@ -2,7 +2,9 @@
 
 ## Overview
 
-The AI WebTester framework has **135 unit and integration tests** across 8 test files. All tests run with `pytest` and do not require a running browser, a live mock app, or an OpenAI API key — they use mocks and FastAPI's TestClient where needed.
+The AI WebTester framework has unit and integration tests across multiple test files. All tests run with `pytest` and do not require a running browser, a live mock app, or an OpenAI API key — they use mocks and FastAPI's TestClient where needed.
+
+For the separate framework security checks used in CI, see `tests/Security-Checks.md`.
 
 ---
 
@@ -179,6 +181,19 @@ Tests the Watchdog system's configuration, state comparison, statistics, and ini
 | `TestWatchdogInit` | 4 | Creates with defaults, accepts sink parameter, tracks network requests, resets stats |
 
 **When to run:** After any change to `utils/watchdog.py` or `configs/watchdog.yaml`.
+
+---
+
+### `test_hooks.py` — Hook System
+
+Tests the hook loader and extension points used for app-specific test generation and execution.
+
+**What it covers:**
+- loading hooks from a Python file
+- ordered execution of sync and async hook transforms
+- environment customization during generated test creation
+
+**When to run:** After any change to `utils/hooks.py`, CLI hook wiring, or generation hook integration.
 
 ---
 

@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from utils.hooks import HookManager
+
 app = typer.Typer(add_completion=False, help="AI WebTester - Automated web application testing framework")
 
 @app.command()
@@ -14,6 +16,10 @@ def run(
     headful: bool = typer.Option(True, help="Open visible browser"),
     control_room: bool = typer.Option(False, help="Enable live Control Room"),
     artifacts_dir: Path = typer.Option(Path("artifacts"), help="Artifacts output dir"),
+    hooks: Optional[str] = typer.Option(
+        None,
+        help="Comma-separated hook module names or file paths",
+    ),
 ):
     """Run a test plan with optional Control Room."""
     run_id = time.strftime("%Y%m%dT%H%M%S")
@@ -21,6 +27,7 @@ def run(
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     async def _run():
+        hook_manager = HookManager.load(hooks)
         cr = None
         if control_room:
             from orchestrator.control_room import ControlRoom
@@ -33,7 +40,8 @@ def run(
             artifacts_dir=str(artifacts_dir),
             headful=headful,
             control_room=cr,
-            run_id=run_id
+            run_id=run_id,
+            hook_manager=hook_manager,
         )
         try:
             result = await graph.run(str(plan), str(env))
@@ -64,11 +72,16 @@ def generate(
     output_dir: Path = typer.Option(Path("examples"), help="Output directory for generated files"),
     headful: bool = typer.Option(False, help="Show browser during analysis"),
     interactive: bool = typer.Option(False, help="Interactive mode with prompts"),
-    run_id: str = typer.Option("", help="Specific run ID for seeded data generation")
+    run_id: str = typer.Option("", help="Specific run ID for seeded data generation"),
+    hooks: Optional[str] = typer.Option(
+        None,
+        help="Comma-separated hook module names or file paths",
+    ),
 ):
     """Generate test plan from URL using AI analysis with seeded data generation."""
     async def _generate():
         from orchestrator.test_plan_generator import TestPlanGenerator
+        hook_manager = HookManager.load(hooks)
         
         # Generate run_id if not provided
         if not run_id:
@@ -80,7 +93,7 @@ def generate(
             generated_run_id = run_id
         
         print(f"🔍 Analyzing {url} (Run ID: {generated_run_id})...")
-        generator = TestPlanGenerator(run_id=generated_run_id)
+        generator = TestPlanGenerator(run_id=generated_run_id, hook_manager=hook_manager)
         
         if interactive:
             result = await generator.interactive_generate(url)
@@ -115,6 +128,10 @@ def explore(
     crawl_only: bool = typer.Option(False, "--crawl-only", help="Crawl and generate tests but don't execute them"),
     control_room: bool = typer.Option(False, help="Enable live Control Room"),
     artifacts_dir: Path = typer.Option(Path("artifacts"), help="Artifacts output dir"),
+    hooks: Optional[str] = typer.Option(
+        None,
+        help="Comma-separated hook module names or file paths",
+    ),
 ):
     """Autonomously explore, map, and test a web application."""
     run_id = f"explore_{time.strftime('%Y%m%dT%H%M%S')}"
@@ -126,6 +143,7 @@ def explore(
     execute_tests = generate_tests and not crawl_only
 
     async def _explore():
+        hook_manager = HookManager.load(hooks)
         cr = None
         if control_room:
             from orchestrator.control_room import ControlRoom
@@ -139,6 +157,7 @@ def explore(
             headful=headful,
             run_id=run_id,
             control_room=cr,
+            hook_manager=hook_manager,
         )
 
         try:

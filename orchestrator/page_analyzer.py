@@ -9,8 +9,9 @@ import os
 from providers.openai_provider import OpenAIProvider
 
 class PageAnalyzer:
-    def __init__(self, openai_api_key: Optional[str] = None):
+    def __init__(self, openai_api_key: Optional[str] = None, hook_manager=None):
         self.openai_provider = OpenAIProvider(api_key=openai_api_key)
+        self.hook_manager = hook_manager
 
     async def analyze_page(self, url: str, headful: bool = False) -> Dict[str, Any]:
         """Analyze a web page and extract interactive elements and structure"""
@@ -52,7 +53,13 @@ class PageAnalyzer:
                 "screenshot": screenshot,
                 "html_content": html_content[:50000]  # Truncate for AI processing
             }
-            
+            if self.hook_manager:
+                analysis_result = await self.hook_manager.transform(
+                    "after_analyze",
+                    analysis_result,
+                    {"url": url, "headful": headful, "source": "generate"},
+                )
+             
             return analysis_result
             
         finally:
@@ -251,14 +258,33 @@ class PageAnalyzer:
 
     async def generate_test_plan(self, page_analysis: Dict[str, Any], test_description: str = "") -> Dict[str, Any]:
         """Generate a test plan using OpenAI based on page analysis"""
+        if self.hook_manager:
+            page_analysis = await self.hook_manager.transform(
+                "before_generate",
+                page_analysis,
+                {"test_description": test_description, "page_type": page_analysis.get("structure", {}).get("page_type")},
+            )
         
         if not self.openai_provider.is_available():
             print("OpenAI API key not provided. Using fallback test generation.")
-            return self._generate_fallback_test_plan(page_analysis)
-        
+            plan = self._generate_fallback_test_plan(page_analysis)
+            if self.hook_manager:
+                plan = await self.hook_manager.transform(
+                    "after_generate",
+                    plan,
+                    {"test_description": test_description, "generation_source": "fallback"},
+                )
+            return plan
+         
         # Use the new provider's async method
         result = await self.openai_provider.generate_test_plan_async(page_analysis, test_description)
-        
+        if self.hook_manager:
+            result = await self.hook_manager.transform(
+                "after_generate",
+                result,
+                {"test_description": test_description, "generation_source": "ai"},
+            )
+
         # The provider handles fallback internally, so we just return the result
         return result
 

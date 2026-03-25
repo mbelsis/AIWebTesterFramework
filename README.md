@@ -16,10 +16,11 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
 - **📋 Comprehensive Evidence**: Automatic collection of traces, screenshots, and detailed logs with security redaction
 - **⚡ Async Architecture**: High-performance asynchronous execution with stuck-screen watchdog protection
 - **🎛️ Flexible Configuration**: YAML-based test plans with seeded Faker for consistent test data generation
+- **🪝 App Hooks**: Optional hook modules can customize analysis, generated plans, environment files, and step execution
 - **🔄 Error Resilience**: Robust error handling with automatic cleanup and intelligent recovery strategies
 - **🔒 Enterprise Security**: Comprehensive data redaction for sensitive information in logs and evidence
-- **🚀 CI/CD Ready**: Complete GitHub Actions pipeline with multi-Python testing and artifact collection
-- **📱 Multi-browser Support**: Chromium, Firefox, and WebKit support via Playwright
+- **🚀 CI/CD Ready**: GitHub Actions workflow with multi-Python test and lint validation plus artifact collection
+- **🌐 Browser Automation**: Chromium-based Playwright automation with video, trace, and screenshot capture
 
 ## 🔍 Autonomous Exploration & Testing
 
@@ -63,18 +64,18 @@ The AI WebTester framework includes a comprehensive **GitHub Actions CI/CD pipel
 
 ### Pipeline Architecture
 
-Our CI/CD pipeline runs **3 parallel jobs** for comprehensive validation:
+The repository includes a GitHub Actions workflow with **3 jobs** that can run in parallel:
 
 #### 🧪 **Test Job (Matrix Strategy)**
 - **Multi-Python Support**: Tests on Python 3.11 and 3.12 simultaneously
 - **Fast Dependencies**: Uses `uv pip` with caching for efficient builds
-- **Browser Automation**: Installs Playwright (Chromium, Firefox, WebKit) with system dependencies
+- **Browser Automation**: Installs Playwright Chromium with system dependencies
 - **Mock App Service**: Starts background mock application with health checks and 60-second timeout
 - **Comprehensive Testing**: 
   - Demo employee creation test with full UI automation
-  - AI-powered test generation (when OpenAI API key available)
-  - Basic API endpoint validation with network request testing
-- **OpenAI Integration**: Gracefully skips AI tests when API key missing (prevents fork failures using `continue-on-error: true`)
+  - AI-powered test generation step using the configured `OPENAI_API_KEY` secret when available
+  - Basic HTTP validation for `/health` and `/login`
+- **OpenAI Integration**: The AI generation step is marked `continue-on-error: true`, so that step does not fail the whole job
 - **Artifact Collection**: Automatically collects test evidence, screenshots, videos, traces, and logs with 30-day retention
 - **Proper Cleanup**: Stops mock app processes and handles cleanup in failure scenarios
 
@@ -84,14 +85,14 @@ Our CI/CD pipeline runs **3 parallel jobs** for comprehensive validation:
 - **Fast Feedback**: Runs in parallel with testing for immediate quality validation
 
 #### 🛡️ **Security Job**
-- **Vulnerability Scanning**: Dependency security analysis with Safety
-- **Security Linting**: Static security analysis with Bandit
-- **Compliance**: Ensures security best practices are maintained
+- **Framework Security Checks**: Runs `safety check` for dependency vulnerabilities and `bandit -r .` for Python security linting
+- **Purpose**: Protects people running AI WebTester in CI or local environments by checking the tester's own code and dependencies
+- **What It Does Not Do**: It does not scan the target application under test for security issues
 
 ### Workflow Triggers
 
 The pipeline automatically runs on:
-- **Push events**: All pushes to main branch and feature branches
+- **Push events**: All pushes
 - **Pull requests**: Comprehensive validation before merge
 - **Manual dispatch**: Can be triggered manually for testing
 
@@ -99,7 +100,7 @@ The pipeline automatically runs on:
 
 - **Fail-Fast Disabled**: All matrix combinations run even if one fails
 - **Artifact Durability**: Complete evidence collection with guaranteed finalization
-- **Network Resilience**: Comprehensive timeout handling and retry logic  
+- **Network Resilience**: Mock app health checks and basic HTTP endpoint validation
 - **Cross-Platform**: Optimized for Ubuntu latest with browser dependencies
 - **Secret Management**: Proper OpenAI API key handling with fork-safe fallbacks
 
@@ -107,14 +108,33 @@ The pipeline automatically runs on:
 
 The pipeline validates:
 1. ✅ **Framework Installation**: Dependencies install correctly across Python versions
-2. ✅ **Browser Automation**: Playwright integration with video/trace recording
-3. ✅ **AI Integration**: OpenAI test generation (when API key available)
+2. ✅ **Browser Automation**: Chromium Playwright integration with video/trace recording
+3. ✅ **AI Integration**: OpenAI-backed plan generation with fallback behavior in the generator
 4. ✅ **Evidence Collection**: Complete artifact generation with security redaction
 5. ✅ **Mock Application**: Background service startup and health validation
 6. ✅ **Code Quality**: Formatting, linting, and type safety
-7. ✅ **Security**: Dependency vulnerabilities and static analysis
+7. ✅ **Framework Security**: The framework's own dependencies and Python code are checked in CI
 
 This ensures every release is thoroughly tested and production-ready with enterprise-grade reliability.
+
+### Why The Security Job Exists
+
+AI WebTester is a framework that users install and run inside their own CI pipelines and environments. That means users are executing this repository's code, browser automation, dependencies, and integrations with access to internal URLs, test credentials, logs, screenshots, traces, and sometimes `OPENAI_API_KEY`.
+
+The CI security job exists to reduce risk in the framework itself:
+- `safety` checks project dependencies for known vulnerabilities
+- `bandit` checks the framework's Python code for common security mistakes
+
+This is infrastructure hygiene for AI WebTester itself. It is separate from the framework's main job, which is testing the functionality of other web applications.
+
+You can run the same checks locally before opening a pull request:
+
+```bash
+safety check
+bandit -r .
+```
+
+For a focused explanation of what these checks cover and when to run them, see [tests/Security-Checks.md](tests/Security-Checks.md).
 
 ### 🔗 **Integrating into Your Projects**
 
@@ -144,7 +164,7 @@ You can easily integrate AI WebTester into your existing GitHub Actions workflow
     path: ai-webtester/artifacts/
 ```
 
-**See [docs/CI_CD_Pipeline.md](docs/CI_CD_Pipeline.md#integrating-ai-webtester-into-your-github-actions) for comprehensive integration examples including:**
+**See [docs/GitHub_Actions/CI_CD_Pipeline.md](docs/GitHub_Actions/CI_CD_Pipeline.md#integrating-ai-webtester-into-your-github-actions) for comprehensive integration examples including:**
 - 🚀 Basic integration with existing workflows
 - 🔄 Deployment testing and staging validation  
 - 🌐 Multi-environment testing across staging/production
@@ -398,12 +418,8 @@ pip install -e .
 ### Step 4: Install Browser Dependencies
 
 ```bash
-# Install Playwright browsers and their dependencies
-playwright install
-
-# This downloads Chromium, Firefox, and WebKit browsers
-# If you only need Chromium (recommended for most cases):
-playwright install chromium
+# Install the browser used by the framework
+playwright install --with-deps chromium
 
 # Alternatively, use the system dependency installer
 playwright install-deps
@@ -479,7 +495,17 @@ source ai-webtester-env/bin/activate
 
 # Reinstall dependencies from pyproject.toml
 pip install --force-reinstall -e ".[dev]"
-playwright install
+playwright install chromium
+```
+
+**Issue: Security check command not found**
+```bash
+# Reinstall development dependencies
+pip install -e ".[dev]"
+
+# Then run the framework security checks again
+safety check
+bandit -r .
 ```
 
 **Issue: OpenAI API errors**
@@ -602,6 +628,8 @@ python -m cli.main run --plan examples/plan.generated_dashboard.yaml --env examp
 ### Command Line Interface
 
 The framework provides several CLI commands:
+
+Hook modules can be attached to `generate`, `explore`, and `run` with `--hooks <module-or-file>`. See [docs/hooks.md](docs/hooks.md) for the supported hook points and integration examples.
 
 #### Generate AI Test Plans
 ```bash
@@ -972,7 +1000,7 @@ python -m cli.main run --plan test.yaml --env env.yaml --control-room
 ## 📚 Documentation
 
 - **Technical Specifications**: See `docs/Technical_Specs.md` for detailed architecture and infrastructure
-- **CI/CD Pipeline**: See `docs/CI_CD_Pipeline.md` for comprehensive pipeline documentation
+- **CI/CD Pipeline**: See `docs/GitHub_Actions/CI_CD_Pipeline.md` for comprehensive pipeline documentation
 - **API Reference**: Control Room API documentation in technical specs
 - **Examples**: Check `examples/` directory for sample configurations
 
