@@ -32,10 +32,10 @@ For AI-assisted generation, also provide:
 
 ### Fixed regression plans
 
-Use `run` when you already have YAML plans:
+Use `run` when you already have YAML plans. In a real pipeline, replace the example files with your own checked-in plan and environment files:
 
 ```bash
-python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml
+python -m cli.main run --plan tests/ai/plan.login.yaml --env tests/ai/env.ci.yaml
 ```
 
 ### AI-assisted plan creation
@@ -86,7 +86,33 @@ See [hooks.md](/C:/Users/mbelsis/Documents/GitHub/AIWebTesterFramework/docs/hook
 This folder also includes a sample [Jenkinsfile](/C:/Users/mbelsis/Documents/GitHub/AIWebTesterFramework/docs/jenkins/Jenkinsfile) that:
 - installs dependencies
 - installs Playwright Chromium
-- runs the framework
+- exposes `AIWEBTEST_PLAN`, `AIWEBTEST_ENV`, and `AIWEBTEST_EXTRA_ARGS` as Jenkins parameters
+- runs the framework against whichever plan and environment file your pipeline provides
 - archives artifacts
 
-Adjust the commands to match your agent OS and deployment flow.
+The defaults still point to the demo files so the example runs out of the box, but that is only a placeholder.
+
+In a user pipeline, the normal flow is:
+
+1. Build and deploy the user's application, or start it in the Jenkins workspace.
+2. Wait until the target URL is reachable.
+3. Run AI WebTester with the team's own `plan` and `env` YAML files.
+4. Archive `artifacts/**`.
+
+Example:
+
+```groovy
+stage('Run AI WebTester') {
+  steps {
+    script {
+      if (isUnix()) {
+        sh 'python3 -m cli.main run --plan tests/ai/plan.login.yaml --env tests/ai/env.ci.yaml --no-headful'
+      } else {
+        bat 'python -m cli.main run --plan tests/ai/plan.login.yaml --env tests/ai/env.ci.yaml --no-headful'
+      }
+    }
+  }
+}
+```
+
+Adjust the commands to match your agent OS, application startup, and deployment flow.

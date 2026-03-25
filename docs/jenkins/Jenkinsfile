@@ -1,6 +1,12 @@
 pipeline {
   agent any
 
+  parameters {
+    string(name: 'AIWEBTEST_PLAN', defaultValue: 'examples/plan.demo_create_employee.yaml', description: 'Path to the AI WebTester plan YAML to run')
+    string(name: 'AIWEBTEST_ENV', defaultValue: 'examples/env.local.yaml', description: 'Path to the AI WebTester environment YAML to run')
+    string(name: 'AIWEBTEST_EXTRA_ARGS', defaultValue: '--no-headful', description: 'Optional extra CLI flags, for example --hooks myapp.testing.hooks')
+  }
+
   environment {
     OPENAI_API_KEY = credentials('openai-api-key')
   }
@@ -29,10 +35,12 @@ pipeline {
     stage('Run AI WebTester') {
       steps {
         script {
+          // Replace the default demo values with your own files, for example:
+          // python -m cli.main run --plan tests/ai/plan.login.yaml --env tests/ai/env.ci.yaml --no-headful
           if (isUnix()) {
-            sh 'python3 -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml'
+            sh "python3 -m cli.main run --plan ${params.AIWEBTEST_PLAN} --env ${params.AIWEBTEST_ENV} ${params.AIWEBTEST_EXTRA_ARGS}"
           } else {
-            bat 'python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml'
+            bat "python -m cli.main run --plan ${params.AIWEBTEST_PLAN} --env ${params.AIWEBTEST_ENV} ${params.AIWEBTEST_EXTRA_ARGS}"
           }
         }
       }
