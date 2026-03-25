@@ -1,0 +1,69 @@
+# Explorer Configuration for AI WebTester Framework
+# Controls autonomous web application exploration behavior
+
+explorer:
+  # Crawling limits
+  max_depth: 5                # Maximum link-following depth from start page
+  max_pages: 200              # Hard cap on total pages discovered
+  timeout_minutes: 30         # Overall exploration time limit
+  page_load_timeout: 15000    # Per-page load timeout in milliseconds
+  delay_between_pages: 500    # Milliseconds to wait between page visits
+
+  # SPA (Single Page Application) handling
+  spa:
+    enabled: true
+    max_clicks_per_page: 20   # Max nav-element clicks to discover SPA routes
+    dom_hash_depth: 3         # DOM tree depth for fingerprinting
+    click_wait_ms: 2000       # Wait time after clicking for SPA content to load
+
+  # Login auto-detection selectors (tried in order)
+  login:
+    username_selectors:
+      - "input[type='email']"
+      - "input[name*='user']"
+      - "input[name*='email']"
+      - "input[name*='login']"
+      - "input[id*='user']"
+      - "input[id*='email']"
+    password_selectors:
+      - "input[type='password']"
+      - "input[name*='pass']"
+      - "input[id*='pass']"
+    submit_selectors:
+      - "button[type='submit']"
+      - "input[type='submit']"
+      - "button:has-text('Login')"
+      - "button:has-text('Sign in')"
+      - "button:has-text('Log in')"
+
+  # Elements to identify as navigation (for SPA crawling)
+  nav_selectors:
+    - "nav a"
+    - "[role='menuitem']"
+    - "[role='tab']"
+    - ".sidebar a"
+    - ".nav-link"
+    - ".menu-item a"
+
+  # URLs/patterns to exclude from crawling
+  exclude_patterns:
+    - "/logout"
+    - "/signout"
+    - "/sign-out"
+    - "/api/"
+    - "/static/"
+    - "/assets/"
+    - "javascript:"
+    - "mailto:"
+    - "tel:"
+    - "#"
+
+  # Module detection: how to identify which module a page belongs to
+  module_detection:
+    sources:
+      - "title"                # Page <title>
+      - "h1"                   # Main heading
+      - "h2"                   # Secondary headings
+      - "nav[aria-label='breadcrumb']"
+      - ".breadcrumb"
+      - ".sidebar .active"

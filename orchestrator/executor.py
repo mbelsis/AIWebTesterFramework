@@ -82,9 +82,18 @@ class Executor:
         self.page.on("request", self._on_request)
         self.page.on("response", self._on_response)
 
+    def _safe_create_task(self, coro):
+        """Create an asyncio task only if an event loop is running."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coro)
+        except RuntimeError:
+            # No running event loop — skip the async send
+            logger.debug("No running event loop; skipping async task creation")
+
     def _on_console(self, msg):
         if not self.cr: return
-        
+
         # Apply redaction to console message
         console_text = msg.text
         if self.redactor and self.redactor.is_enabled():
@@ -92,8 +101,8 @@ class Executor:
                 console_text = self.redactor.redact_text(console_text, ContentType.TEXT)
             except Exception as e:
                 logger.error(f"Error redacting console message: {e}")
-        
-        asyncio.create_task(self.cr.send_log(
+
+        self._safe_create_task(self.cr.send_log(
             self.run_id, msg.type, "console", console_text, time.time()
         ))
 
@@ -101,9 +110,9 @@ class Executor:
         # Track request with watchdog if available
         if self.watchdog:
             self.watchdog.track_network_request("request")
-            
+
         if not self.cr: return
-        
+
         # Apply redaction to request URL and method
         request_url = req.url
         if self.redactor and self.redactor.is_enabled():
@@ -111,8 +120,8 @@ class Executor:
                 request_url = self.redactor.redact_url(request_url)
             except Exception as e:
                 logger.error(f"Error redacting request URL: {e}")
-        
-        asyncio.create_task(self.cr.send_log(
+
+        self._safe_create_task(self.cr.send_log(
             self.run_id, "info", "network", f"→ {req.method} {request_url}", time.time()
         ))
 
@@ -120,9 +129,9 @@ class Executor:
         # Track response with watchdog if available
         if self.watchdog:
             self.watchdog.track_network_request("response")
-            
+
         if not self.cr: return
-        
+
         # Apply redaction to response URL
         response_url = resp.url
         if self.redactor and self.redactor.is_enabled():
@@ -130,8 +139,8 @@ class Executor:
                 response_url = self.redactor.redact_url(response_url)
             except Exception as e:
                 logger.error(f"Error redacting response URL: {e}")
-        
-        asyncio.create_task(self.cr.send_log(
+
+        self._safe_create_task(self.cr.send_log(
             self.run_id, "info", "network", f"← {resp.status} {response_url}", time.time()
         ))
 
@@ -217,9 +226,9 @@ class Executor:
                 screenshot = await self.page.screenshot()
                 filename = f"step_{idx}_failure.png"
                 self.sink.save_screenshot(screenshot, filename)
-            except:
+            except Exception:
                 pass
-            
+
             error_msg = f"Step failed: {str(e)}"
             if self.cr:
                 await self.cr.send_log(self.run_id, "error", "agent", error_msg, time.time())
@@ -249,7 +258,12 @@ class Executor:
     async def _navigate(self, url: str):
         """Navigate to URL"""
         await self.page.goto(url)
-        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_load_state("domcontentloaded")
+        # Brief settle wait — networkidle is too brittle for SPAs/analytics
+        try:
+            await self.page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass  # Timeout is acceptable — page is interactive after domcontentloaded
 
     async def _click(self, selector: str):
         """Click element"""
@@ -269,7 +283,11 @@ class Executor:
         # Wait for selector to be available
         await self.page.wait_for_selector(selector, timeout=10000)
         await self.page.click(selector)
-        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_load_state("domcontentloaded")
+        try:
+            await self.page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass
 
     async def _wait(self, seconds: float):
         """Wait for specified time"""

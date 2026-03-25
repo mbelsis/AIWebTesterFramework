@@ -2,6 +2,7 @@
 Utility functions for integrating seeded data generation with the AI WebTester framework.
 """
 
+import copy
 from typing import Dict, Any, Optional
 from data_gen.faker_util import get_run_specific_faker
 
@@ -28,7 +29,7 @@ def inject_seeded_data_into_env(env_config: Dict[str, Any], run_id: Optional[str
         run_id = 'default_run'
     
     faker = get_run_specific_faker(run_id)
-    updated_config = env_config.copy()
+    updated_config = copy.deepcopy(env_config)
     
     # Replace template variables in credentials
     if 'credentials' in updated_config:

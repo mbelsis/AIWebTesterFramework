@@ -39,22 +39,16 @@ class SeededFaker:
     def _generate_seed(self, run_id: str) -> int:
         """
         Generate consistent seed from run_id.
-        
+
+        Uses a hash-based approach so every run_id (regardless of format)
+        maps to a deterministic, well-distributed integer seed.
+
         Args:
             run_id: Run identifier
-            
+
         Returns:
             Integer seed for Faker
         """
-        try:
-            # Try to extract hex-like portion from run_id
-            if len(run_id) >= 6:
-                hex_part = run_id[-6:]
-                return int(hex_part, 16) % (2**31 - 1)  # Ensure positive 32-bit int
-        except ValueError:
-            pass
-        
-        # Fall back to hash-based seed
         hash_obj = hashlib.md5(run_id.encode('utf-8'))
         return int(hash_obj.hexdigest()[:8], 16) % (2**31 - 1)
     
@@ -77,28 +71,24 @@ class SeededFaker:
         base_name = self.faker.user_name()
         return f"{prefix}+{base_name}+{suffix}@{domain}"
     
-    def user_profile(self, consistent_names: bool = True) -> Dict[str, str]:
+    def user_profile(self, cache: bool = True) -> Dict[str, str]:
         """
         Generate consistent user profile data.
-        
+
         Args:
-            consistent_names: Whether first/last names should match logically
-            
+            cache: If True (default), returns the cached profile for this run.
+                   Set to False to generate a fresh (but still seeded) profile.
+
         Returns:
             Dictionary with user profile data
         """
         cache_key = "user_profile"
-        if cache_key in self._cache:
+        if cache and cache_key in self._cache:
             return self._cache[cache_key].copy()
-        
-        if consistent_names:
-            # Generate matching first/last name pair
-            first_name = self.faker.first_name()
-            last_name = self.faker.last_name()
-        else:
-            first_name = self.faker.first_name()
-            last_name = self.faker.last_name()
-        
+
+        first_name = self.faker.first_name()
+        last_name = self.faker.last_name()
+
         profile = {
             'first_name': first_name,
             'last_name': last_name,
@@ -110,8 +100,9 @@ class SeededFaker:
             'job_title': self.faker.job(),
             'company': self.faker.company()
         }
-        
-        self._cache[cache_key] = profile.copy()
+
+        if cache:
+            self._cache[cache_key] = profile.copy()
         return profile
     
     def address_data(self) -> Dict[str, str]:

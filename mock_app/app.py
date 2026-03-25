@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -6,7 +8,8 @@ from typing import List, Optional
 import time
 
 app = FastAPI(title="AI WebTester Demo App")
-templates = Jinja2Templates(directory="mock_app/templates")
+_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 # In-memory store
 class Employee(BaseModel):
@@ -27,7 +30,7 @@ def root(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 def login_view(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html")
 
 @app.post("/login")
 def login_post(username: str = Form(...), password: str = Form(...), domain: Optional[str] = Form(None)):
@@ -43,7 +46,7 @@ def employees_new(request: Request):
     if not session:
         return RedirectResponse(url="/login")
     
-    return templates.TemplateResponse("employees_new.html", {"request": request})
+    return templates.TemplateResponse(request, "employees_new.html")
 
 @app.post("/employees")
 def create_employee(
@@ -72,7 +75,7 @@ def create_employee(
 
 @app.get("/api/employees")
 def list_employees():
-    return {"employees": [emp.dict() for emp in EMPLOYEES]}
+    return {"employees": [emp.model_dump() for emp in EMPLOYEES]}
 
 @app.get("/health")
 def health_check():

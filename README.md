@@ -8,6 +8,7 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
 
 ### Key Features
 
+- **🔍 Autonomous Exploration**: Point it at your app with credentials — it crawls every page, maps all forms and inputs, and tests everything automatically
 - **🧠 Revolutionary AI Test Generation**: Automatically generate comprehensive test plans from any URL - no more manual YAML writing!
 - **🤖 AI-Powered Testing**: Intelligent test execution using OpenAI Responses API with JSON mode and retry logic
 - **🎥 Video Recording**: Complete browser session recordings with guaranteed finalization and durability
@@ -19,6 +20,42 @@ AI WebTester is a powerful testing framework designed to automate web applicatio
 - **🔒 Enterprise Security**: Comprehensive data redaction for sensitive information in logs and evidence
 - **🚀 CI/CD Ready**: Complete GitHub Actions pipeline with multi-Python testing and artifact collection
 - **📱 Multi-browser Support**: Chromium, Firefox, and WebKit support via Playwright
+
+## 🔍 Autonomous Exploration & Testing
+
+The `explore` command lets AI WebTester autonomously crawl, map, and test your entire web application. Instead of writing test plans, you give it credentials and let it work like a human tester — discovering pages, filling forms, clicking buttons, and reporting what it finds.
+
+```bash
+# Explore your entire app
+python -m cli.main explore https://your-app.com/login \
+  --username "admin@company.com" --password "Pass123!"
+
+# Focus on specific modules
+python -m cli.main explore https://your-app.com/login \
+  --username "admin@company.com" --password "Pass123!" \
+  --modules "Risk Assessment,Vendor Management"
+
+# Use a session cookie instead of credentials
+python -m cli.main explore https://your-app.com/dashboard \
+  --cookie-name "session" --cookie-value "abc123xyz"
+
+# Map the app without running tests
+python -m cli.main explore https://your-app.com/login \
+  --username "admin@company.com" --password "Pass123!" \
+  --crawl-only
+```
+
+**What it produces:**
+- **App map** (`app_map.json`) — every page, form, input, output, and link it discovered
+- **Test plans** (`test_plans/`) — AI-generated test plan for each page with forms
+- **Test results** (`exploration_report.json`) — pass/fail per page with error details
+- **Error log** — all JavaScript console errors and HTTP failures found during crawling
+- **Video & screenshots** — full browser recording and per-page screenshots
+- **Input/output mapping** — what each form expects and what it returns
+
+The explorer handles single-page applications (SPAs) by detecting DOM content changes, prevents infinite loops via URL + DOM fingerprinting, and stays within your application's domain.
+
+**See [Automated-Testing.md](Automated-Testing.md) for the full guide with detailed examples.**
 
 ## 🚀 CI/CD Pipeline
 
@@ -97,7 +134,7 @@ You can easily integrate AI WebTester into your existing GitHub Actions workflow
   run: |
     cd ai-webtester
     python -m cli.main generate http://localhost:3000 --description "Test my app"
-    python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --headless
+    python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --no-headful
 
 - name: Upload test artifacts
   uses: actions/upload-artifact@v4
@@ -195,14 +232,16 @@ python -m cli.main run --plan examples/plan.calendar_add_events_test.yaml --env 
 **What it is**: A minimal employee management app for basic framework demonstration.
 
 ```bash
-# One-command demo that handles everything
+# Start the mock application first (in a separate terminal)
+python -m cli.main mock-app
+
+# Then run the demo test
 python run_test.py
 ```
 
-This automatically:
-- Starts the simple mock application on an available port (auto-detected)
+**Note:** The mock application must be running before you execute `run_test.py`. The test script:
 - Launches the Control Room dashboard with automatic port allocation
-- Executes a basic employee creation test with seeded test data
+- Executes a basic employee creation test against the mock app with seeded test data
 - Generates test artifacts with security redaction and guaranteed durability
 - Monitors for stuck screens with automatic recovery
 
@@ -579,10 +618,22 @@ python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env exam
 python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml --control-room
 
 # Headless mode
-python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml --headful false
+python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml --no-headful
 
 # Custom artifacts directory
 python -m cli.main run --plan examples/plan.demo_create_employee.yaml --env examples/env.local.yaml --artifacts-dir ./my-test-results
+```
+
+#### Autonomous Exploration
+```bash
+# Explore and test an entire application automatically
+python -m cli.main explore https://your-app.com/login --username "user" --password "pass"
+
+# Focus on specific modules
+python -m cli.main explore https://your-app.com/login --username "user" --password "pass" --modules "Risk Assessment"
+
+# Crawl only (no test execution)
+python -m cli.main explore https://your-app.com/login --username "user" --password "pass" --crawl-only
 ```
 
 #### Start Services

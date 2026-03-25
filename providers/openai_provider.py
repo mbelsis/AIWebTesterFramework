@@ -238,38 +238,38 @@ class OpenAIProvider:
                     logger.error(f"Error redacting messages for logging: {e}")
                     redacted_messages = messages
             
-            # Prepare request parameters
+            # Build a local copy of messages to avoid mutating the caller's list
+            api_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
+
+            # Ensure system message mentions JSON output when using JSON mode
+            if json_mode and self.model.supports_json_mode:
+                if api_messages and api_messages[0].get("role") == "system":
+                    if "json" not in api_messages[0]["content"].lower():
+                        api_messages[0]["content"] += "\n\nReturn your response as valid JSON."
+
+            # Prepare request parameters (Responses API format)
             request_params = {
                 "model": self.model.value,
-                "input": [{"role": m["role"], "content": [{"type": "text", "text": m["content"]}]} for m in messages],
+                "input": api_messages,
+                "temperature": temperature,
                 **kwargs
             }
-            
-            # Only set temperature for models that support it
-            if self.model not in [OpenAIModel.GPT_4O_MINI] or temperature == 1.0:
-                request_params["temperature"] = temperature
-            
-            # Add JSON mode if requested and supported
+
+            # Add JSON mode using Responses API text format
             if json_mode and self.model.supports_json_mode:
-                request_params["response_format"] = {"type": "json_object"}
-                # Ensure system message mentions JSON output
-                if messages and messages[0].get("role") == "system":
-                    if "json" not in messages[0]["content"].lower():
-                        messages[0]["content"] += "\n\nReturn your response as valid JSON."
-                        
-            # Set max_output_tokens if not provided (Responses API)
+                request_params["text"] = {"format": {"type": "json_object"}}
+
+            # Set max_output_tokens if not provided
             if max_tokens is None:
                 max_tokens = min(4096, self.model.max_tokens // 2)
-            
-            # Use max_output_tokens for Responses API
             request_params["max_output_tokens"] = max_tokens
-            
+
             logger.debug(f"Making OpenAI API request with {len(redacted_messages)} messages")
-            
+
             # Make API call using Responses API
             if self.client is None:
                 raise ValueError("OpenAI client not initialized")
-            
+
             response = self.client.responses.create(**request_params)
             
             # Extract response data from Responses API
@@ -359,38 +359,38 @@ class OpenAIProvider:
                     logger.error(f"Error redacting messages for logging: {e}")
                     redacted_messages = messages
             
-            # Prepare request parameters
+            # Build a local copy of messages to avoid mutating the caller's list
+            api_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
+
+            # Ensure system message mentions JSON output when using JSON mode
+            if json_mode and self.model.supports_json_mode:
+                if api_messages and api_messages[0].get("role") == "system":
+                    if "json" not in api_messages[0]["content"].lower():
+                        api_messages[0]["content"] += "\n\nReturn your response as valid JSON."
+
+            # Prepare request parameters (Responses API format)
             request_params = {
                 "model": self.model.value,
-                "input": [{"role": m["role"], "content": [{"type": "text", "text": m["content"]}]} for m in messages],
+                "input": api_messages,
+                "temperature": temperature,
                 **kwargs
             }
-            
-            # Only set temperature for models that support it
-            if self.model not in [OpenAIModel.GPT_4O_MINI] or temperature == 1.0:
-                request_params["temperature"] = temperature
-            
-            # Add JSON mode if requested and supported
+
+            # Add JSON mode using Responses API text format
             if json_mode and self.model.supports_json_mode:
-                request_params["response_format"] = {"type": "json_object"}
-                # Ensure system message mentions JSON output
-                if messages and messages[0].get("role") == "system":
-                    if "json" not in messages[0]["content"].lower():
-                        messages[0]["content"] += "\n\nReturn your response as valid JSON."
-                        
-            # Set max_output_tokens if not provided (Responses API)
+                request_params["text"] = {"format": {"type": "json_object"}}
+
+            # Set max_output_tokens if not provided
             if max_tokens is None:
                 max_tokens = min(4096, self.model.max_tokens // 2)
-            
-            # Use max_output_tokens for Responses API
             request_params["max_output_tokens"] = max_tokens
-            
+
             logger.debug(f"Making async OpenAI API request with {len(redacted_messages)} messages")
-            
+
             # Make API call using Responses API
             if self.async_client is None:
                 raise ValueError("OpenAI async client not initialized")
-                
+
             response = await self.async_client.responses.create(**request_params)
             
             # Extract response data from Responses API
@@ -600,40 +600,10 @@ Focus on practical, executable test steps that cover the main user journey.
         return prompt
     
     def _generate_fallback_test_plan(self, page_analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate a basic test plan without AI as fallback."""
-        
-        steps = []
-        page_type = page_analysis.get("structure", {}).get("page_type", "unknown")
-        
-        # Add navigation step
-        steps.append({
-            "title": f"Navigate to {page_analysis.get('title', 'page')}",
-            "action": "navigate",
-            "target": page_analysis.get("url", "")
-        })
-        
-        # Generate steps based on page elements
-        for element in page_analysis.get("elements", []):
-            if not element.get("visible", False) or not element.get("enabled", False):
-                continue
-                
-            if element.get("type") == "inputs" and element.get("input_type") == "text":
-                field_name = element.get("placeholder") or element.get("name") or "field"
-                steps.append({
-                    "title": f"Fill {field_name}",
-                    "action": "fill",
-                    "target": element.get("selector", ""),
-                    "data": {"value": "test_value"}
-                })
-            elif element.get("type") == "buttons" and element.get("text"):
-                steps.append({
-                    "title": f"Click {element.get('text', '')}",
-                    "action": "click", 
-                    "target": element.get("selector", "")
-                })
-        
-        return {
-            "name": f"Generated Test for {page_analysis.get('title', 'Page')}",
-            "description": f"Auto-generated test plan for {page_type} page",
-            "steps": steps
-        }
+        """Generate a basic test plan without AI as fallback.
+
+        Delegates to PageAnalyzer's fallback which handles all common input types.
+        """
+        from orchestrator.page_analyzer import PageAnalyzer
+        analyzer = PageAnalyzer.__new__(PageAnalyzer)
+        return analyzer._generate_fallback_test_plan(page_analysis)

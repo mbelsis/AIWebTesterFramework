@@ -142,17 +142,21 @@ class TestRedactionPatterns:
                 assert original not in result
     
     def test_social_security_numbers(self):
-        """Test SSN redaction."""
+        """Test SSN redaction (requires dashes to avoid false positives on plain 9-digit numbers)."""
         test_cases = [
-            ("SSN: 123-45-6789", "SSN: [REDACTED_SSN]"),
-            ("Social: 987654321", "Social: [REDACTED_SSN]"),
-            ("ID: 123456789", "ID: [REDACTED_SSN]"),
+            "SSN: 123-45-6789",
+            "Social: 987-65-4321",
+            "ID: 111-22-3333",
         ]
-        
-        for original, expected in test_cases:
+
+        for original in test_cases:
             result = self.redactor.redact_text(original)
             assert "[REDACTED_SSN]" in result
-            assert "123-45-6789" not in result
+
+        # Plain 9-digit numbers should NOT be redacted (avoids false positives)
+        plain = "Timestamp: 987654321"
+        result = self.redactor.redact_text(plain)
+        assert "987654321" in result
     
     def test_credit_card_numbers(self):
         """Test credit card number redaction."""
@@ -1073,7 +1077,11 @@ class TestConfigLoadingAndErrorHandling:
     
     def test_custom_config_path(self):
         """Test using custom configuration path."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        # Use delete=False and close the file before SecurityRedactor opens it
+        # (Windows does not allow two processes to open the same file simultaneously)
+        f = tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False)
+        tmp_path = f.name
+        try:
             custom_config = {
                 "redaction": {
                     "enabled": False,
@@ -1082,14 +1090,13 @@ class TestConfigLoadingAndErrorHandling:
                 }
             }
             yaml.dump(custom_config, f)
-            f.flush()
-            
-            try:
-                redactor = SecurityRedactor(config_path=f.name)
-                assert redactor.config["redaction"]["enabled"] is False
-                assert redactor.config["redaction"]["replacement_text"] == "[CUSTOM_REDACTED]"
-            finally:
-                Path(f.name).unlink()  # Clean up
+            f.close()  # Close before SecurityRedactor reads it
+
+            redactor = SecurityRedactor(config_path=tmp_path)
+            assert redactor.config["redaction"]["enabled"] is False
+            assert redactor.config["redaction"]["replacement_text"] == "[CUSTOM_REDACTED]"
+        finally:
+            Path(tmp_path).unlink()  # Clean up
 
 
 # Integration test to verify the complete redaction pipeline

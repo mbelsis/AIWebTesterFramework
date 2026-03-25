@@ -5,6 +5,7 @@ Security redaction utilities for sanitizing sensitive data from logs, evidence, 
 import re
 import json
 import logging
+import threading
 import yaml
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union, Tuple
@@ -229,7 +230,7 @@ class SecurityRedactor:
             logger.error(f"Error redacting JSON: {e}")
             return data
     
-    def _redact_json_object(self, obj: Union[Dict, List, Any]) -> Union[Dict, List, Any]:
+    def _redact_json_object(self, obj: Union[Dict, List, Any], _parent_sensitive_key: Optional[str] = None) -> Union[Dict, List, Any]:
         """Recursively redact JSON objects while preserving structure."""
         if isinstance(obj, dict):
             redacted_dict = {}
@@ -241,7 +242,8 @@ class SecurityRedactor:
                     if isinstance(value, str):
                         redacted_dict[key] = self._get_redacted_value_for_key(key)
                     elif isinstance(value, (dict, list)):
-                        redacted_dict[key] = self._redact_json_object(value)
+                        # Pass the sensitive key down so list items inherit redaction
+                        redacted_dict[key] = self._redact_json_object(value, _parent_sensitive_key=key)
                     else:
                         redacted_dict[key] = value
                 elif isinstance(value, str):
@@ -253,11 +255,14 @@ class SecurityRedactor:
             return redacted_dict
         
         elif isinstance(obj, list):
-            return [self._redact_json_object(item) for item in obj]
-        
+            return [self._redact_json_object(item, _parent_sensitive_key) for item in obj]
+
         elif isinstance(obj, str):
+            # If a parent dict key was sensitive, redact the string unconditionally
+            if _parent_sensitive_key:
+                return self._get_redacted_value_for_key(_parent_sensitive_key)
             return self.redact_text(obj, ContentType.JSON)
-        
+
         else:
             return obj
     
@@ -423,15 +428,19 @@ class SecurityRedactor:
         return errors
 
 
-# Global redactor instance
+# Global redactor instance (thread-safe initialization)
 _global_redactor: Optional[SecurityRedactor] = None
+_redactor_lock = threading.Lock()
 
 
 def get_redactor() -> SecurityRedactor:
-    """Get the global security redactor instance."""
+    """Get the global security redactor instance (thread-safe)."""
     global _global_redactor
     if _global_redactor is None:
-        _global_redactor = SecurityRedactor()
+        with _redactor_lock:
+            # Double-check after acquiring lock
+            if _global_redactor is None:
+                _global_redactor = SecurityRedactor()
     return _global_redactor
 
 

@@ -32,7 +32,7 @@ class ControlRoom:
                     command = json.loads(data)
                     await self.handle_command(run_id, command)
             except WebSocketDisconnect:
-                del self.connections[run_id]
+                self.connections.pop(run_id, None)
 
         @self.app.get("/api/runs")
         async def list_runs():
@@ -66,7 +66,7 @@ class ControlRoom:
                     "message": message,
                     "timestamp": time.time()
                 }))
-            except:
+            except Exception:
                 pass
         
         # Store in state
@@ -87,7 +87,7 @@ class ControlRoom:
                     "error": error,
                     "timestamp": time.time()
                 }))
-            except:
+            except Exception:
                 pass
 
     async def send_log(self, run_id: str, level: str, source: str, message: str, timestamp: float):
@@ -101,7 +101,7 @@ class ControlRoom:
                     "message": message,
                     "timestamp": timestamp
                 }))
-            except:
+            except Exception:
                 pass
 
     async def send_thumb_png(self, run_id: str, png_data: bytes, ts: float):
@@ -115,7 +115,7 @@ class ControlRoom:
                     "data": b64_data,
                     "timestamp": ts
                 }))
-            except:
+            except Exception:
                 pass
 
     async def wait_for_control(self, run_id: str, allowed_commands: set) -> Dict:

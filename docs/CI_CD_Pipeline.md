@@ -342,7 +342,7 @@ jobs:
         run: |
           cd ai-webtester
           python -m cli.main generate http://localhost:3000/login --description "Test login functionality"
-          python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --headless
+          python -m cli.main run --plan examples/plan.generated_*.yaml --env examples/env.generated_*.yaml --no-headful
       
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
@@ -400,7 +400,7 @@ jobs:
           
           # Run all generated tests
           for plan in examples/plan.generated_*.yaml; do
-            python -m cli.main run --plan "$plan" --env "${plan/plan/env}" --headless
+            python -m cli.main run --plan "$plan" --env "${plan/plan/env}" --no-headful
           done
       
       - name: Check test results
@@ -462,7 +462,7 @@ jobs:
           python -m cli.main run \
             --plan examples/plan.generated_*.yaml \
             --env examples/env.generated_*.yaml \
-            --headless \
+            --no-headful \
             --control-room-port 0  # Auto-allocate port
       
       - name: Upload artifacts
@@ -521,7 +521,7 @@ jobs:
           python -m cli.main run \
             --plan examples/plan.generated_*.yaml \
             --env examples/env.generated_*.yaml \
-            --headless
+            --no-headful
       
       - name: Comment PR with results
         uses: actions/github-script@v7
@@ -630,7 +630,7 @@ jobs:
           python -m cli.main run \
             --plan examples/plan.generated_*.yaml \
             --env examples/env.generated_*.yaml \
-            --headless
+            --no-headful
       
       - name: Analyze performance metrics
         run: |
@@ -681,7 +681,7 @@ jobs:
           python -m cli.main run \
             --plan examples/plan.generated_*.yaml \
             --env examples/env.generated_*.yaml \
-            --headless
+            --no-headful
       
       - name: Security analysis
         run: |

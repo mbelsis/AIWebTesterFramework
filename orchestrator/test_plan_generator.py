@@ -38,7 +38,7 @@ class TestPlanGenerator:
         env_config = self._generate_environment_config(url, page_analysis)
         
         # Save files
-        plan_filename, env_filename = await self._save_files(
+        plan_filename, env_filename = self._save_files(
             test_plan, env_config, output_dir, page_analysis["title"]
         )
         
@@ -85,8 +85,8 @@ class TestPlanGenerator:
         page_type = page_analysis["structure"]["page_type"]
         
         if page_type == "login":
-            # Generate valid and invalid user profiles
-            valid_user = faker.user_profile()
+            # Generate a distinct valid user profile (don't reuse the cached default)
+            valid_user = faker.user_profile(cache=False)
             env_config["test_data"] = {
                 "valid_credentials": {
                     "username": valid_user['username'],
@@ -180,10 +180,10 @@ class TestPlanGenerator:
         
         return env_config
 
-    async def _save_files(
-        self, 
-        test_plan: Dict[str, Any], 
-        env_config: Dict[str, Any], 
+    def _save_files(
+        self,
+        test_plan: Dict[str, Any],
+        env_config: Dict[str, Any],
         output_dir: str,
         page_title: str
     ) -> tuple[str, str]:
@@ -217,7 +217,8 @@ class TestPlanGenerator:
         # Remove or replace problematic characters
         safe = re.sub(r'[^\w\s-]', '', filename)
         safe = re.sub(r'[\s_]+', '_', safe)
-        return safe.lower()[:50]  # Limit length
+        safe = safe.strip('_').lower()[:50]
+        return safe if safe else "untitled"
 
     def _generate_run_id(self) -> str:
         """Generate a unique run ID for seeding purposes."""

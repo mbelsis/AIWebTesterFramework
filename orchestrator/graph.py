@@ -91,7 +91,7 @@ class TestGraph:
                     if 'page' in locals() and page:
                         screenshot = await page.screenshot()
                         sink.save_screenshot(screenshot, "failure_screenshot.png")
-                except:
+                except Exception:
                     pass
                 sink.save_logs()
             
@@ -163,7 +163,10 @@ class TestGraph:
     def _load_yaml(self, path: str) -> Dict[str, Any]:
         """Load YAML configuration file"""
         with open(path, 'r') as f:
-            return yaml.safe_load(f)
+            data = yaml.safe_load(f)
+        if data is None:
+            raise ValueError(f"YAML file is empty or invalid: {path}")
+        return data
     
     def _save_run_summary(self, sink, finalization_result: Optional[Dict[str, Any]] = None, run_result: Optional[Dict[str, Any]] = None):
         """Generate and save comprehensive run summary JSON and minimal run.json."""

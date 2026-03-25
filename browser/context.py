@@ -281,24 +281,28 @@ async def create_context(headful: bool, artifacts_dir: str, env_config: dict | N
         Tuple of (playwright, browser, context, page, network_tracker, state_capture)
     """
     p = await async_playwright().start()
-    
-    # Get settings from env config if provided
+
+    # Get settings from env config if provided — these override the headful parameter
     settings = env_config.get("settings", {}) if env_config else {}
     slow_mo = settings.get("slow_mo", 0)
-    
+    use_headful = settings.get("headful", headful)
+    enable_video = settings.get("video", True)
+    enable_screenshots = settings.get("screenshots", True)
+
     browser = await p.chromium.launch(
-        headless=not headful,
+        headless=not use_headful,
         slow_mo=slow_mo
     )
-    
-    # Create context with video recording
-    context = await browser.new_context(
-        record_video_dir=str(Path(artifacts_dir) / "video"),
-        viewport={"width": 1280, "height": 720}
-    )
-    
-    # Start tracing
-    await context.tracing.start(screenshots=True, snapshots=True, sources=True)
+
+    # Create context — only enable video recording if configured
+    context_opts = {"viewport": {"width": 1280, "height": 720}}
+    if enable_video:
+        context_opts["record_video_dir"] = str(Path(artifacts_dir) / "video")
+
+    context = await browser.new_context(**context_opts)
+
+    # Start tracing with screenshots if configured
+    await context.tracing.start(screenshots=enable_screenshots, snapshots=True, sources=True)
     
     # Create page
     page = await context.new_page()
@@ -307,7 +311,7 @@ async def create_context(headful: bool, artifacts_dir: str, env_config: dict | N
     redactor = None
     if REDACTION_AVAILABLE:
         redactor = get_redactor()
-        if redactor.is_enabled():
+        if redactor and redactor.is_enabled():
             logger.info("Security redaction enabled for browser evidence collection")
     
     # Initialize watchdog helpers if enabled
@@ -334,24 +338,10 @@ async def create_context(headful: bool, artifacts_dir: str, env_config: dict | N
             network_tracker = None
             state_capture = None
     
-    # Setup request/response interceptors for redaction if available
-    if redactor and redactor.is_enabled():
-        async def redact_request(route, request):
-            """Redact sensitive data from requests before processing."""
-            try:
-                # Log redacted request info
-                redacted_url = redactor.redact_url(request.url)
-                logger.debug(f"Request intercepted: {request.method} {redacted_url}")
-                
-                # Continue with original request
-                await route.continue_()
-            except Exception as e:
-                logger.error(f"Error in request redaction: {e}")
-                await route.continue_()
-        
-        # Intercept all requests for redaction logging
-        await page.route("**/*", redact_request)
-    
+    # Note: redaction is handled by NetworkActivityTracker and Executor event
+    # listeners.  A page.route("**/*") interceptor was removed here because it
+    # added latency to every request while only performing debug logging.
+
     return p, browser, context, page, network_tracker, state_capture
 
 
@@ -528,11 +518,13 @@ async def finalize_video_and_trace(context, artifacts_dir: str, timeout: int = 3
                     else:
                         finalization_result["errors"].append("No stable video files found after context close")
                 else:
-                    # No video files found - this might be expected if recording wasn't active
-                    logger.info("No video files found after context close - recording may not have been active")
-                    finalization_result["video_finalized"] = True  # Consider it finalized if no files expected
+                    # Video directory exists but contains no video files — recording may have failed
+                    logger.warning("Video directory exists but no video files found — recording may have failed")
+                    finalization_result["errors"].append("Video directory exists but contains no video files")
+                    finalization_result["video_finalized"] = False
             else:
-                logger.info("No video directory found - video recording was not enabled")
+                # No video directory at all — recording was not enabled, which is fine
+                logger.info("No video directory found — video recording was not enabled")
                 finalization_result["video_finalized"] = True
                 
         except Exception as e:

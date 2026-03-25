@@ -386,22 +386,20 @@ class Watchdog:
     
     def _setup_network_tracking(self, page):
         """Setup network request/response tracking for the page."""
-        def on_request(request):
-            self.track_network_request("request")
-        
-        def on_response(response):
-            self.track_network_request("response")
-        
-        # Remove existing listeners to avoid duplicates
-        try:
-            page.remove_listener("request", on_request)
-            page.remove_listener("response", on_response)
-        except:
-            pass
-        
-        # Add new listeners
-        page.on("request", on_request)
-        page.on("response", on_response)
+        # Remove previous listeners if they exist (uses stable references)
+        if hasattr(self, '_on_page_request'):
+            try:
+                page.remove_listener("request", self._on_page_request)
+                page.remove_listener("response", self._on_page_response)
+            except Exception:
+                pass
+
+        # Store as instance attributes so the same references can be removed later
+        self._on_page_request = lambda request: self.track_network_request("request")
+        self._on_page_response = lambda response: self.track_network_request("response")
+
+        page.on("request", self._on_page_request)
+        page.on("response", self._on_page_response)
     
     async def _monitoring_loop(self, page, context=None, run_id: Optional[str] = None):
         """Main monitoring loop that checks for stuck states."""
@@ -563,12 +561,12 @@ class Watchdog:
         try:
             if strategy == RecoveryStrategy.BACK_NAVIGATION:
                 await page.go_back()
-                await page.wait_for_load_state("networkidle", timeout=5000)
+                await page.wait_for_load_state("domcontentloaded", timeout=5000)
                 return True
-                
+
             elif strategy == RecoveryStrategy.PAGE_RELOAD:
                 await page.reload()
-                await page.wait_for_load_state("networkidle", timeout=10000)
+                await page.wait_for_load_state("domcontentloaded", timeout=10000)
                 return True
                 
             elif strategy == RecoveryStrategy.GRACEFUL_CONTINUATION:
@@ -578,7 +576,7 @@ class Watchdog:
                 if self.config.capture_screenshots and self.sink:
                     try:
                         screenshot = await page.screenshot()
-                        filename = f"stuck_state_{run_id}_{int(time.time())}.png"
+                        filename = f"stuck_state_{run_id}_{time.time_ns()}.png"
                         self.sink.save_screenshot(screenshot, filename)
                     except Exception as e:
                         logger.error(f"Failed to capture stuck state screenshot: {e}")

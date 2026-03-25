@@ -65,7 +65,7 @@ class EvidenceSink:
     def save_screenshot(self, screenshot_data: bytes, filename: Optional[str] = None) -> str:
         """Save screenshot and return filename"""
         if not filename:
-            filename = f"screenshot_{int(time.time())}.png"
+            filename = f"screenshot_{time.time_ns()}.png"
         
         screenshot_path = self.artifacts_dir / filename
         with open(screenshot_path, "wb") as f:
@@ -284,7 +284,7 @@ class EvidenceSink:
     def save_redacted_html(self, html_content: str, filename: Optional[str] = None) -> str:
         """Save HTML content with redaction applied"""
         if not filename:
-            filename = f"dom_snapshot_{int(time.time())}.html"
+            filename = f"dom_snapshot_{time.time_ns()}.html"
         
         try:
             # Apply redaction to HTML content
@@ -308,15 +308,15 @@ class EvidenceSink:
     def save_watchdog_state_snapshot(self, state_data: Dict[str, Any], run_id: Optional[str] = None) -> str:
         """
         Save watchdog state snapshot for debugging stuck-screen detection.
-        
+
         Args:
             state_data: Watchdog state information including DOM hash, pixel signature, etc.
             run_id: Optional run ID for organization
-            
+
         Returns:
             Filename of the saved state snapshot
         """
-        timestamp = int(time.time())
+        timestamp = time.time_ns()
         filename = f"watchdog_state_{run_id}_{timestamp}.json" if run_id else f"watchdog_state_{timestamp}.json"
         
         try:
@@ -358,7 +358,7 @@ class EvidenceSink:
         Returns:
             Filename of the saved comparison data
         """
-        timestamp = int(time.time())
+        timestamp = time.time_ns()
         filename = f"watchdog_comparison_{run_id}_{timestamp}.json" if run_id else f"watchdog_comparison_{timestamp}.json"
         
         try:
@@ -402,7 +402,7 @@ class EvidenceSink:
         Returns:
             Filename of the saved metrics data
         """
-        timestamp = int(time.time())
+        timestamp = time.time_ns()
         filename = f"watchdog_metrics_{run_id}_{timestamp}.json" if run_id else f"watchdog_metrics_{timestamp}.json"
         
         try:
@@ -442,7 +442,7 @@ class EvidenceSink:
         Returns:
             Filename of the saved screenshot
         """
-        timestamp = int(time.time())
+        timestamp = time.time_ns()
         if not filename:
             filename = f"watchdog_screenshot_{timestamp}.png"
         
